@@ -194,25 +194,25 @@ We follow the [Dark Research open source strategy](https://www.darkresearch.ai/b
 
 ## Roadmap
 
-### Phase 1 (MVP - Current)
+### Phase 1: MVP (Current)
 - ✅ Basic workflow builder
 - ✅ x402 prepayment system
 - ✅ Telegram deployment
 - ✅ 10 core blocks
 
-### Phase 2 (Q1 2025)
+### Phase 2: Enhanced Integrations
 - 🔲 Browser extensions
 - 🔲 Website widgets
 - 🔲 Discord bot deployment
 - 🔲 Community block marketplace
 
-### Phase 3 (Q2 2025)
+### Phase 3: Team Features
 - 🔲 Multi-user teams
 - 🔲 Advanced permissions
 - 🔲 CI/CD integration
 - 🔲 Self-hosted facilitator
 
-### Phase 4 (Q3 2025)
+### Phase 4: Enterprise
 - 🔲 Mobile app
 - 🔲 Enterprise SLA
 - 🔲 Custom AI model fine-tuning
