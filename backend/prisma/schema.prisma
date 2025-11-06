@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  telegramUserId        BigInt?   @unique @map("telegram_user_id")
+  walletAddress         String?   @unique @map("wallet_address") @db.VarChar(255)
+  sessionKeyPublic      String?   @map("session_key_public") @db.VarChar(255)
+  sessionKeyEncrypted   String?   @map("session_key_encrypted") @db.Text
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  credits               Credits?
+  workflows             Workflow[]
+  x402Transactions      X402Transaction[]
+  apiUsage              ApiUsage[]
+  blocks                Block[]
+  blockUsage            BlockUsage[]
+
+  @@map("users")
+}
+
+model Credits {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  balance         BigInt    @default(0)
+  lastToppedUp    DateTime? @map("last_topped_up")
+  totalPaidUsd    Decimal   @default(0) @map("total_paid_usd") @db.Decimal(10, 2)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credits")
+}
+
+model X402Transaction {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  amountUsd       Decimal   @map("amount_usd") @db.Decimal(10, 2)
+  creditsIssued   BigInt    @map("credits_issued")
+  txHash          String?   @unique @map("tx_hash") @db.VarChar(255)
+  status          String    @default("pending") @db.VarChar(50)
+  facilitator     String    @default("coinbase") @db.VarChar(50)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("x402_transactions")
+}
+
+model Workflow {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  name              String    @db.VarChar(255)
+  description       String?   @db.Text
+  canvasJson        String    @map("canvas_json") @db.Text
+  isActive          Boolean   @default(false) @map("is_active")
+  deploymentType    String?   @map("deployment_type") @db.VarChar(50)
+  deploymentConfig  Json?     @map("deployment_config")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  lastExecutedAt    DateTime? @map("last_executed_at")
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions        WorkflowExecution[]
+
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id                String    @id @default(uuid())
+  workflowId        String    @map("workflow_id")
+  status            String    @default("running") @db.VarChar(50)
+  inputData         Json?     @map("input_data")
+  outputData        Json?     @map("output_data")
+  errorMessage      String?   @map("error_message") @db.Text
+  executionTimeMs   Int?      @map("execution_time_ms")
+  apiCallsCount     Int       @default(0) @map("api_calls_count")
+  creditsUsed       BigInt    @default(0) @map("credits_used")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  workflow          Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  blockUsage        BlockUsage[]
+
+  @@map("workflow_executions")
+}
+
+model ApiUsage {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  workflowId        String?   @map("workflow_id")
+  apiType           String    @map("api_type") @db.VarChar(100)
+  creditsCharged    BigInt    @map("credits_charged")
+  responseTimeMs    Int?      @map("response_time_ms")
+  status            String    @db.VarChar(50)
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_usage")
+}
+
+model Block {
+  id                String    @id @default(uuid())
+  name              String    @db.VarChar(255)
+  description       String?   @db.Text
+  category          String    @db.VarChar(100)
+  blockConfig       Json      @map("block_config")
+  authorUserId      String?   @map("author_user_id")
+  isOfficial        Boolean   @default(false) @map("is_official")
+  downloadsCount    Int       @default(0) @map("downloads_count")
+  rating            Decimal?  @db.Decimal(3, 2)
+  githubUrl         String?   @map("github_url") @db.VarChar(500)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  author            User?     @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  blockUsage        BlockUsage[]
+
+  @@map("blocks")
+}
+
+model BlockUsage {
+  id                      String    @id @default(uuid())
+  blockId                 String    @map("block_id")
+  workflowExecutionId     String    @map("workflow_execution_id")
+  authorId                String?   @map("author_id")
+  revenueSharePercent     Int?      @map("revenue_share_percent")
+  creditsPaid             BigInt    @default(0) @map("credits_paid")
+  createdAt               DateTime  @default(now()) @map("created_at")
+
+  block                   Block     @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  workflowExecution       WorkflowExecution @relation(fields: [workflowExecutionId], references: [id], onDelete: Cascade)
+  author                  User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@map("block_usage")
+}
