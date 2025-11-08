@@ -34,7 +34,7 @@ export const llmAnalysisBlock: BlockDefinition = {
   creditsCost: 100,
   execute: async (inputs) => {
     try {
-      const { text, prompt = 'Analyze the following text:' } = inputs;
+      const { text } = inputs;
 
       const mockAnalysis = {
         analysis: `Based on the text, this appears to be ${text ? 'meaningful content' : 'empty input'}. The sentiment is neutral to positive.`,

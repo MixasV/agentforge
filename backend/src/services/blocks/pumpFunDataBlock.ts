@@ -35,7 +35,9 @@ export const pumpFunDataBlock: BlockDefinition = {
   creditsCost: 2,
   execute: async (inputs) => {
     try {
-      const { minMarketCap = 0, maxMarketCap = 1000000000, limit = 10 } = inputs;
+      const minMarketCap = Number(inputs.minMarketCap ?? 0);
+      const maxMarketCap = Number(inputs.maxMarketCap ?? 1000000000);
+      const limit = Number(inputs.limit ?? 10);
 
       const mockTokens = [
         {
@@ -58,7 +60,7 @@ export const pumpFunDataBlock: BlockDefinition = {
 
       const filteredTokens = mockTokens
         .filter(t => t.marketCap >= minMarketCap && t.marketCap <= maxMarketCap)
-        .slice(0, Number(limit));
+        .slice(0, limit);
 
       logger.debug('Pump.fun data fetched', {
         minMarketCap,

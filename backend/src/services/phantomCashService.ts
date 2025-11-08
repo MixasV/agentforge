@@ -17,7 +17,8 @@ export class PhantomCashService {
     const rpcEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com';
     this.connection = new Connection(rpcEndpoint, 'confirmed');
     
-    this.CASH_MINT = new PublicKey('CASH11111111111111111111111111111111111111');
+    const cashMintAddress = process.env.CASH_MINT_ADDRESS || 'CASHVDm2wsJXfhj6VWxb7GiMdoLc17Du7paH4bNr5woT';
+    this.CASH_MINT = new PublicKey(cashMintAddress);
     
     logger.info('Phantom CASH Service initialized', {
       rpcEndpoint,

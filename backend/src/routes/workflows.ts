@@ -23,12 +23,12 @@ router.get('/', authenticate, async (req: AuthRequest, res, next) => {
     const { page, limit } = validateSchema(paginationSchema, req.query);
     const result = await workflowService.getWorkflows(req.user.id, page, limit);
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -46,7 +46,7 @@ router.post('/', authenticate, async (req: AuthRequest, res, next) => {
       data: workflow,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -59,12 +59,12 @@ router.get('/:id', authenticate, async (req: AuthRequest, res, next) => {
     const workflowId = validateSchema(uuidSchema, req.params.id);
     const workflow = await workflowService.getWorkflowById(workflowId, req.user.id);
 
-    res.json({
+    return res.json({
       success: true,
       data: workflow,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -78,12 +78,12 @@ router.put('/:id', authenticate, async (req: AuthRequest, res, next) => {
     const data = validateSchema(workflowUpdateSchema, req.body);
     const workflow = await workflowService.updateWorkflow(workflowId, req.user.id, data);
 
-    res.json({
+    return res.json({
       success: true,
       data: workflow,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -96,12 +96,12 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res, next) => {
     const workflowId = validateSchema(uuidSchema, req.params.id);
     const result = await workflowService.deleteWorkflow(workflowId, req.user.id);
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -116,12 +116,12 @@ router.post('/:id/run', authenticate, async (req: AuthRequest, res, next) => {
 
     const result = await workflowExecutor.execute(workflowId, req.user.id, inputs || {});
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -136,12 +136,12 @@ router.get('/:id/executions', authenticate, async (req: AuthRequest, res, next) 
 
     const result = await workflowService.getWorkflowExecutions(workflowId, req.user.id, page, limit);
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 

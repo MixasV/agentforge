@@ -34,7 +34,7 @@ export const solanaSwapBlock: BlockDefinition = {
   creditsCost: 5,
   execute: async (inputs) => {
     try {
-      const { routePlan, slippageBps = 50 } = inputs;
+      const slippageBps = Number(inputs.slippageBps ?? 50);
 
       const mockTxHash = `${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
 

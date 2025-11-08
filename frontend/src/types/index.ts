@@ -80,27 +80,22 @@ export interface WorkflowExecution {
 }
 
 export interface BlockDefinition {
-  id: string;
+  type: string;
   name: string;
   description: string;
   category: 'data' | 'action' | 'logic' | 'ai';
-  blockConfig: {
-    inputs: Array<{
-      name: string;
-      type: string;
-      required: boolean;
-      description?: string;
-    }>;
-    outputs: Array<{
-      name: string;
-      type: string;
-      description?: string;
-    }>;
-    creditsCost: number;
-  };
-  isOfficial: boolean;
-  downloadsCount: number;
-  rating?: number;
+  inputs: Array<{
+    name: string;
+    type: string;
+    required: boolean;
+    description?: string;
+  }>;
+  outputs: Array<{
+    name: string;
+    type: string;
+    description?: string;
+  }>;
+  creditsCost: number;
 }
 
 export interface ApiResponse<T = unknown> {

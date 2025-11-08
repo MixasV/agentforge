@@ -29,13 +29,13 @@ export const filterBlock: BlockDefinition = {
   creditsCost: 0,
   execute: async (inputs) => {
     try {
-      const { items, condition } = inputs;
+      const { items } = inputs;
 
       if (!Array.isArray(items)) {
         throw new Error('Items must be an array');
       }
 
-      const filteredItems = items.filter((item: any) => {
+      const filteredItems = items.filter(() => {
         return true;
       });
 

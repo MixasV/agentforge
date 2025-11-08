@@ -4,7 +4,6 @@ import { x402Service } from '../services/x402Service';
 import { authenticate } from '../middleware/auth';
 import { validateSchema, paginationSchema, prepaymentSchema, uuidSchema } from '../utils/validation';
 import { AuthRequest } from '../types';
-import { z } from 'zod';
 
 const router = Router();
 
@@ -14,12 +13,12 @@ router.get('/balance', authenticate, async (req: AuthRequest, res, next) => {
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
     const balance = await creditsService.getBalance(req.user.id);
-    res.json({
+    return res.json({
       success: true,
       data: balance,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -29,12 +28,12 @@ router.get('/usage', authenticate, async (req: AuthRequest, res, next) => {
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
     const usage = await creditsService.getUsageStats(req.user.id);
-    res.json({
+    return res.json({
       success: true,
       data: usage,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -45,12 +44,12 @@ router.get('/transactions', authenticate, async (req: AuthRequest, res, next) =>
     }
     const { page, limit } = validateSchema(paginationSchema, req.query);
     const transactions = await creditsService.getTransactions(req.user.id, page, limit);
-    res.json({
+    return res.json({
       success: true,
       data: transactions,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -64,12 +63,12 @@ router.post('/prepay', authenticate, async (req: AuthRequest, res, next) => {
       userId: req.user.id,
       amountUsd,
     });
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -80,12 +79,12 @@ router.get('/prepay/:txId/status', authenticate, async (req: AuthRequest, res, n
     }
     const txId = validateSchema(uuidSchema, req.params.txId);
     const result = await x402Service.checkPaymentStatus(txId, req.user.id);
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -99,12 +98,12 @@ router.post('/prepay/:txId/simulate', authenticate, async (req: AuthRequest, res
     }
     const txId = validateSchema(uuidSchema, req.params.txId);
     const result = await x402Service.simulatePayment(txId, req.user.id);
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 

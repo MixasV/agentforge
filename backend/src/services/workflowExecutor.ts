@@ -1,6 +1,6 @@
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
-import { WorkflowNode, WorkflowEdge, ExecutionContext, BlockDefinition } from '../types';
+import { WorkflowNode, WorkflowEdge, ExecutionContext } from '../types';
 import { AppError, InsufficientCreditsError } from '../utils/errors';
 import { BLOCKS_REGISTRY } from './blocks';
 
@@ -35,7 +35,7 @@ export class WorkflowExecutor {
         data: {
           workflowId,
           status: 'running',
-          inputData: inputs,
+          inputData: JSON.parse(JSON.stringify(inputs)),
         },
       });
       executionId = execution.id;
@@ -120,7 +120,7 @@ export class WorkflowExecutor {
         where: { id: executionId },
         data: {
           status: 'success',
-          outputData: finalOutput,
+          outputData: JSON.parse(JSON.stringify(finalOutput)),
           executionTimeMs,
           apiCallsCount: sortedNodes.length,
           creditsUsed: context.creditsUsed,

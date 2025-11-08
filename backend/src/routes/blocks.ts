@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { BLOCKS_LIST } from '../services/blocks';
+import { BLOCKS_LIST, BLOCKS_REGISTRY } from '../services/blocks';
 import { optionalAuth } from '../middleware/auth';
 
 const router = Router();
@@ -7,8 +7,8 @@ const router = Router();
 router.get('/', optionalAuth, async (_req, res) => {
   try {
     const blocks = BLOCKS_LIST.map(block => ({
-      type: Object.keys(require('../services/blocks').BLOCKS_REGISTRY).find(
-        key => require('../services/blocks').BLOCKS_REGISTRY[key] === block
+      type: Object.keys(BLOCKS_REGISTRY).find(
+        key => BLOCKS_REGISTRY[key] === block
       ),
       name: block.name,
       description: block.description,
@@ -18,7 +18,7 @@ router.get('/', optionalAuth, async (_req, res) => {
       creditsCost: block.creditsCost,
     }));
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         blocks,
@@ -26,7 +26,7 @@ router.get('/', optionalAuth, async (_req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to fetch blocks',
     });

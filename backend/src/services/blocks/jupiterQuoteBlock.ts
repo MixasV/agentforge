@@ -50,7 +50,12 @@ export const jupiterQuoteBlock: BlockDefinition = {
         throw new Error(`Jupiter API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as {
+        routePlan: unknown;
+        inAmount: string;
+        outAmount: string;
+        priceImpactPct: number;
+      };
 
       logger.debug('Jupiter quote fetched', { inputMint, outputMint, amount });
 

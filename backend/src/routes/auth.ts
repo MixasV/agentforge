@@ -17,30 +17,31 @@ router.post('/phantom/login', async (req, res, next) => {
   try {
     const payload = validateSchema(phantomLoginSchema, req.body);
     const result = await authService.loginWithPhantom(payload);
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
 const telegramLoginSchema = z.object({
-  telegramUserId: z.string().or(z.number()).transform(val => BigInt(val)),
+  telegramUserId: z.union([z.string(), z.number()]),
   username: z.string().optional(),
 });
 
 router.post('/telegram/login', async (req, res, next) => {
   try {
-    const { telegramUserId, username } = validateSchema(telegramLoginSchema, req.body);
-    const result = await authService.loginWithTelegram(telegramUserId, username);
-    res.json({
+    const data = validateSchema(telegramLoginSchema, req.body);
+    const telegramUserId = BigInt(data.telegramUserId);
+    const result = await authService.loginWithTelegram(telegramUserId, data.username);
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -50,17 +51,17 @@ router.get('/me', authenticate, async (req: AuthRequest, res, next) => {
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
     const user = await authService.getCurrentUser(req.user.id);
-    res.json({
+    return res.json({
       success: true,
       data: user,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
 router.post('/logout', authenticate, async (_req, res) => {
-  res.json({
+  return res.json({
     success: true,
     message: 'Logged out successfully',
   });
@@ -74,12 +75,12 @@ router.post('/cdp/login', async (req, res, next) => {
   try {
     const { email } = validateSchema(emailLoginSchema, req.body);
     const result = await authService.initiateEmailLogin(email);
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -93,12 +94,12 @@ router.post('/cdp/verify', async (req, res, next) => {
   try {
     const { flowId, otp, email } = validateSchema(verifyOtpSchema, req.body);
     const result = await authService.verifyEmailOTP(flowId, otp, email);
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
