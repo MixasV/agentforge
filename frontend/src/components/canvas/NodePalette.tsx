@@ -46,6 +46,8 @@ export function NodePalette() {
         type: blockType,
         label: block.name,
         category: block.category,
+        description: block.description,
+        creditsCost: block.creditsCost,
         config: {},
       },
     }));
@@ -55,12 +57,14 @@ export function NodePalette() {
   const handleAddNode = (blockType: string, block: BlockDefinition) => {
     const newNode = {
       id: `${blockType}-${Date.now()}`,
-      type: 'default',
+      type: 'customNode',
       position: { x: Math.random() * 400, y: Math.random() * 400 },
       data: {
         type: blockType,
         label: block.name,
         category: block.category,
+        description: block.description,
+        creditsCost: block.creditsCost,
         config: {},
       },
     };

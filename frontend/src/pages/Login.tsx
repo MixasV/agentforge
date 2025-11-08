@@ -22,14 +22,19 @@ export function Login() {
         return;
       }
 
+      console.log('🔵 Connecting to Phantom...');
       const response = await solana.connect();
       const walletAddress = response.publicKey.toString();
+      console.log('✅ Connected! Wallet:', walletAddress);
 
       const message = `Sign this message to login to AgentForge.\n\nWallet: ${walletAddress}\nTimestamp: ${Date.now()}`;
+      console.log('📝 Requesting signature...');
       const encodedMessage = new TextEncoder().encode(message);
       const signedMessage = await solana.signMessage(encodedMessage, 'utf8');
+      console.log('✅ Signature received');
 
       const signature = btoa(String.fromCharCode(...signedMessage.signature));
+      console.log('🚀 Sending login request...', { walletAddress, signatureLength: signature.length });
 
       loginWithPhantom({
         walletAddress,
@@ -37,7 +42,7 @@ export function Login() {
         message,
       });
     } catch (error) {
-      console.error('Phantom login error:', error);
+      console.error('❌ Phantom login error:', error);
       toast.error('Failed to connect to Phantom wallet');
     } finally {
       setIsConnecting(false);

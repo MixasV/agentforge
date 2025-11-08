@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -16,6 +16,7 @@ import { useWorkflowStore } from '@/store/workflowStore';
 import { NodePalette } from './NodePalette';
 import { NodeInspector } from './NodeInspector';
 import { ExecutionLog } from './ExecutionLog';
+import { CustomNode } from './CustomNode';
 import { Save, Play, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,8 @@ export function WorkflowCanvas({ workflowId, onSave, onRun }: WorkflowCanvasProp
   
   const [nodes, setNodesState, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdgesState, onEdgesChange] = useEdgesState(storeEdges);
+
+  const nodeTypes = useMemo(() => ({ customNode: CustomNode }), []);
 
   useEffect(() => {
     setNodesState(storeNodes);
@@ -156,6 +159,7 @@ export function WorkflowCanvas({ workflowId, onSave, onRun }: WorkflowCanvasProp
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
             fitView
             className="bg-dark-bg"
           >

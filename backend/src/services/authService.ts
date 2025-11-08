@@ -1,6 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
-import bs58 from 'bs58';
 import { prisma } from '../utils/prisma';
 import { generateToken } from '../middleware/auth';
 import { AppError } from '../utils/errors';
@@ -67,13 +66,22 @@ export class AuthService {
     try {
       const publicKey = new PublicKey(walletAddress);
       const messageBytes = new TextEncoder().encode(message);
-      const signatureBytes = bs58.decode(signature);
+      
+      // Frontend sends base64 encoded signature (using btoa)
+      // In Node.js, use Buffer.from instead of atob
+      const signatureBytes = Uint8Array.from(Buffer.from(signature, 'base64'));
 
-      return nacl.sign.detached.verify(
+      const isValid = nacl.sign.detached.verify(
         messageBytes,
         signatureBytes,
         publicKey.toBytes()
       );
+
+      if (!isValid) {
+        logger.warn('Invalid signature', { walletAddress, messagePreview: message.substring(0, 50) });
+      }
+
+      return isValid;
     } catch (error) {
       logger.error('Signature verification failed', error);
       return false;

@@ -1,11 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useWorkflowStore } from '@/store/workflowStore';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/services/api';
 import { Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
+import { BlockDefinition } from '@/types';
 
 export function NodeInspector() {
   const { selectedNode, updateNode, removeNode, setSelectedNode } = useWorkflowStore();
   const [config, setConfig] = useState<Record<string, any>>({});
+
+  const { data: blocksData } = useQuery({
+    queryKey: ['blocks'],
+    queryFn: async () => {
+      const response = await api.get('/api/blocks');
+      return response.data;
+    },
+  });
+
+  const blocks: (BlockDefinition & { type: string })[] = blocksData?.data?.blocks || [];
+  const currentBlockDef = blocks.find(b => b.type === selectedNode?.data?.type);
 
   useEffect(() => {
     if (selectedNode?.data?.config) {
@@ -97,39 +111,80 @@ export function NodeInspector() {
         </div>
 
         <div className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium mb-2">Input Mint Address</label>
-            <input
-              type="text"
-              value={config.inputMint || ''}
-              onChange={(e) => handleConfigChange('inputMint', e.target.value)}
-              placeholder="e.g., So11111111111111111111111111111111111111112"
-              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Output Mint Address</label>
-            <input
-              type="text"
-              value={config.outputMint || ''}
-              onChange={(e) => handleConfigChange('outputMint', e.target.value)}
-              placeholder="e.g., EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Amount</label>
-            <input
-              type="number"
-              value={config.amount || ''}
-              onChange={(e) => handleConfigChange('amount', parseFloat(e.target.value))}
-              placeholder="e.g., 1000000"
-              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
-            />
-            <p className="text-xs text-gray-500 mt-1">Amount in smallest unit (lamports)</p>
-          </div>
+          {currentBlockDef ? (
+            currentBlockDef.inputs.map((input) => (
+              <div key={input.name}>
+                <label className="block text-sm font-medium mb-2">
+                  {input.name}
+                  {input.required && <span className="text-red-400 ml-1">*</span>}
+                </label>
+                {input.type === 'number' ? (
+                  <input
+                    type="number"
+                    value={config[input.name] || ''}
+                    onChange={(e) => handleConfigChange(input.name, parseFloat(e.target.value))}
+                    placeholder={input.description}
+                    required={input.required}
+                    className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
+                  />
+                ) : input.type === 'boolean' ? (
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config[input.name] || false}
+                      onChange={(e) => handleConfigChange(input.name, e.target.checked)}
+                      className="w-5 h-5 rounded bg-dark-bg border-dark-border text-solana-purple focus:ring-solana-purple"
+                    />
+                    <span className="text-sm text-gray-400">{input.description}</span>
+                  </label>
+                ) : input.type === 'array' ? (
+                  <textarea
+                    value={JSON.stringify(config[input.name] || [], null, 2)}
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value);
+                        handleConfigChange(input.name, parsed);
+                      } catch {
+                        // Invalid JSON, don't update
+                      }
+                    }}
+                    placeholder={input.description}
+                    rows={4}
+                    className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple font-mono text-xs"
+                  />
+                ) : input.type === 'object' ? (
+                  <textarea
+                    value={JSON.stringify(config[input.name] || {}, null, 2)}
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value);
+                        handleConfigChange(input.name, parsed);
+                      } catch {
+                        // Invalid JSON, don't update
+                      }
+                    }}
+                    placeholder={input.description}
+                    rows={4}
+                    className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple font-mono text-xs"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={config[input.name] || ''}
+                    onChange={(e) => handleConfigChange(input.name, e.target.value)}
+                    placeholder={input.description}
+                    required={input.required}
+                    className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
+                  />
+                )}
+                {input.description && (
+                  <p className="text-xs text-gray-500 mt-1">{input.description}</p>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-gray-400">No configuration available for this block</p>
+          )}
         </div>
 
         <div className="space-y-3">

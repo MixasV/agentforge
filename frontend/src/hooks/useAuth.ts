@@ -14,19 +14,24 @@ export function useAuth() {
       const response = await authApi.getCurrentUser();
       return response.data;
     },
-    enabled: isAuthenticated && !user,
+    enabled: false, // Disabled - user comes from login response
     retry: false,
   });
 
   const loginWithPhantom = useMutation({
     mutationFn: authApi.loginWithPhantom,
     onSuccess: (data) => {
+      console.log('✅ Login successful!', data);
+      console.log('💾 Saving token to localStorage...');
       setAuth(data.data.user, data.data.token);
+      console.log('✅ Auth state updated, navigating to dashboard...');
       toast.success('Logged in successfully');
       navigate('/dashboard');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Login failed');
+    onError: (error: any) => {
+      console.error('❌ Login failed:', error);
+      console.error('❌ Response:', error.response?.data);
+      toast.error(error.response?.data?.error || error.message || 'Login failed');
     },
   });
 

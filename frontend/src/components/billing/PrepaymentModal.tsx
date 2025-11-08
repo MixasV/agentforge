@@ -34,16 +34,16 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
     onSuccess: (data) => {
       setTransactionId(data.data.transactionId);
       setIsProcessing(true);
-      simulatePayment(data.data.transactionId);
+      processPhantomPayment(data);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Failed to initiate prepayment');
     },
   });
 
-  const simulateMutation = useMutation({
-    mutationFn: async (txId: string) => {
-      const response = await api.post(`/api/credits/prepay/${txId}/simulate`);
+  const confirmMutation = useMutation({
+    mutationFn: async ({ txId, signature }: { txId: string; signature: string }) => {
+      const response = await api.post(`/api/credits/prepay/${txId}/confirm`, { signature });
       return response.data;
     },
     onSuccess: () => {
@@ -52,16 +52,75 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
       onSuccess();
       handleClose();
     },
-    onError: () => {
-      toast.error('Payment simulation failed');
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Payment confirmation failed');
       setIsProcessing(false);
     },
   });
 
-  const simulatePayment = (txId: string) => {
-    setTimeout(() => {
-      simulateMutation.mutate(txId);
-    }, 2000);
+  const processPhantomPayment = async (transactionData: any) => {
+    try {
+      const { solana } = window as any;
+      
+      if (!solana?.isPhantom) {
+        toast.error('Phantom wallet not found');
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log('🔵 Opening Phantom for transaction signature...');
+      
+      // Create real Solana transaction
+      const { Connection, Transaction, PublicKey, SystemProgram } = await import('@solana/web3.js');
+      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+      
+      const transaction = new Transaction();
+      const recipientPubkey = new PublicKey(transactionData.data.recipientAddress);
+      const senderPubkey = new PublicKey(await solana.publicKey.toString());
+      
+      // Add transfer instruction (in lamports - 1 SOL = 1,000,000,000 lamports)
+      // For demo: transfer 0.01 SOL (~$2 on mainnet, free on devnet)
+      const lamports = Math.floor(transactionData.data.amountUsd * 10000000); // 0.01 SOL per $1
+      
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: senderPubkey,
+          toPubkey: recipientPubkey,
+          lamports,
+        })
+      );
+
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = senderPubkey;
+
+      console.log('📝 Transaction prepared, requesting signature...');
+      
+      // Request signature from Phantom
+      const signed = await solana.signAndSendTransaction(transaction);
+      console.log('✅ Transaction signed!', signed.signature);
+      
+      // Wait for confirmation
+      toast.loading('Confirming on blockchain...', { duration: 3000 });
+      await connection.confirmTransaction(signed.signature);
+      
+      console.log('✅ Transaction confirmed on blockchain');
+      
+      // Confirm with backend
+      confirmMutation.mutate({
+        txId: transactionData.data.transactionId,
+        signature: signed.signature,
+      });
+    } catch (error: any) {
+      console.error('❌ Transaction failed:', error);
+      if (error.code === 4001) {
+        toast.error('Transaction cancelled by user');
+      } else {
+        toast.error('Transaction failed: ' + error.message);
+      }
+      setIsProcessing(false);
+    }
   };
 
   const handlePrepay = () => {
@@ -88,8 +147,8 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-card rounded-xl max-w-md w-full border border-dark-border">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-dark-card rounded-xl max-w-2xl w-full border border-dark-border my-8">
         <div className="flex items-center justify-between p-6 border-b border-dark-border">
           <h2 className="text-xl font-semibold">Add Credits via x402</h2>
           {!isProcessing && (
@@ -166,7 +225,7 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
                 </div>
               )}
 
-              <div className="space-y-3 mb-6">
+              <div className="grid grid-cols-3 gap-3 mb-6">
                 {PRESET_AMOUNTS.map((preset) => (
                   <button
                     key={preset.amount}
@@ -175,19 +234,19 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
                       setCustomAmount('');
                     }}
                     className={clsx(
-                      'w-full p-4 rounded-lg border-2 transition-all text-left',
+                      'p-3 rounded-lg border-2 transition-all text-center',
                       selectedAmount === preset.amount && !customAmount
                         ? 'border-solana-purple bg-solana-purple/10'
                         : 'border-dark-border hover:border-solana-purple/50'
                     )}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-lg">${preset.amount}</span>
-                      <span className="text-xs px-2 py-1 bg-solana-green/10 text-solana-green rounded">
+                    <div className="mb-1">
+                      <span className="font-semibold text-xl block">${preset.amount}</span>
+                      <span className="text-xs px-2 py-0.5 bg-solana-green/10 text-solana-green rounded inline-block">
                         {preset.label}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-xs text-gray-400">
                       {preset.credits.toLocaleString()} credits
                     </p>
                   </button>
@@ -247,7 +306,7 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
-                In development mode, payment is simulated. In production, this would open Phantom wallet.
+                Real Solana transaction - Phantom wallet will open for signature.
               </p>
             </>
           )}

@@ -5,7 +5,8 @@ import { TrendingUp } from 'lucide-react';
 export function UsageChart() {
   const { usage, isLoading } = useCredits();
 
-  const mockData = [
+  // Use data from backend (which includes dailyBreakdown)
+  const chartData = usage?.dailyBreakdown || [
     { day: 'Mon', credits: 250 },
     { day: 'Tue', credits: 420 },
     { day: 'Wed', credits: 380 },
@@ -55,7 +56,7 @@ export function UsageChart() {
         <div className="bg-dark-bg rounded-lg p-4">
           <p className="text-xs text-gray-400 mb-1">Daily Avg</p>
           <p className="text-xl font-semibold text-green-400">
-            {Math.round(usage?.estimateDailyCost || 0)}
+            {(usage?.estimateDailyCost || 0).toLocaleString()}
           </p>
           <p className="text-xs text-gray-500">credits</p>
         </div>
@@ -63,7 +64,7 @@ export function UsageChart() {
 
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={mockData}>
+          <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
             <XAxis dataKey="day" stroke="#666" style={{ fontSize: 12 }} />
             <YAxis stroke="#666" style={{ fontSize: 12 }} />

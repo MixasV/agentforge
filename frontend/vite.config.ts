@@ -14,13 +14,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'solana-vendor': [
-            '@solana/web3.js',
-            '@solana/wallet-adapter-base',
-            '@solana/wallet-adapter-react',
-            '@solana/wallet-adapter-react-ui',
-            '@solana/wallet-adapter-wallets',
-          ],
+          'solana-vendor': ['@solana/web3.js'],
           'reactflow-vendor': ['reactflow'],
           'ui-vendor': ['lucide-react', 'react-hot-toast', 'recharts'],
           'utils-vendor': ['axios', 'zustand', 'clsx', 'date-fns', '@tanstack/react-query'],
@@ -31,6 +25,8 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '0.0.0.0',
+    allowedHosts: ['werpool.mixas.pro', 'localhost'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

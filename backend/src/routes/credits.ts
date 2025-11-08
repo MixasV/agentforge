@@ -107,4 +107,26 @@ router.post('/prepay/:txId/simulate', authenticate, async (req: AuthRequest, res
   }
 });
 
+router.post('/prepay/:txId/confirm', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    const txId = validateSchema(uuidSchema, req.params.txId);
+    const { signature } = req.body;
+    
+    if (!signature || typeof signature !== 'string') {
+      return res.status(400).json({ success: false, error: 'Signature is required' });
+    }
+    
+    const result = await x402Service.confirmPayment(txId, req.user.id, signature);
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 export default router;

@@ -21,7 +21,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiResponse>) => {
-    if (error.response?.status === 401) {
+    // Only redirect on 401 if NOT on login page and NOT during login request
+    if (error.response?.status === 401 && 
+        !window.location.pathname.includes('/login') &&
+        !error.config?.url?.includes('/auth/')) {
       localStorage.removeItem('authToken');
       window.location.href = '/login';
     }

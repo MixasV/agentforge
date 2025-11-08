@@ -45,7 +45,7 @@ export function Settings() {
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">User ID</label>
                 <div className="px-4 py-3 bg-dark-bg rounded-lg border border-dark-border">
-                  <code className="text-sm">{user?.id}</code>
+                  <code className="text-sm">{user?.id || 'Not loaded'}</code>
                 </div>
               </div>
 
@@ -128,19 +128,27 @@ export function Settings() {
 
               <div className="flex items-center justify-between p-4 bg-dark-bg rounded-lg border border-dark-border">
                 <div className="flex items-center gap-3">
-                  <Wallet size={20} className="text-gray-400" />
+                  <Wallet size={20} className={user?.walletAddress ? "text-solana-green" : "text-gray-400"} />
                   <div>
                     <p className="font-medium">Connected Wallet</p>
-                    <p className="text-sm text-gray-400">
+                    <p className={`text-sm ${user?.walletAddress ? 'text-solana-green' : 'text-gray-400'}`}>
                       {user?.walletAddress
                         ? `${user.walletAddress.slice(0, 8)}...${user.walletAddress.slice(-8)}`
                         : 'Not connected'}
                     </p>
                   </div>
                 </div>
-                <button className="px-4 py-2 bg-dark-card border border-dark-border text-white rounded-lg hover:border-solana-purple transition-colors">
-                  Change
-                </button>
+                {user?.walletAddress ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-1 bg-solana-green/10 text-solana-green rounded">
+                      Connected
+                    </span>
+                  </div>
+                ) : (
+                  <button className="px-4 py-2 bg-solana-purple text-white rounded-lg hover:bg-solana-purple/80 transition-colors">
+                    Connect
+                  </button>
+                )}
               </div>
             </div>
           </div>
