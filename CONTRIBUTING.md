@@ -156,7 +156,7 @@ When creating custom blocks:
 ## Getting Started
 
 1. Read [SETUP.md](SETUP.md) for local development
-2. Check [Issues](https://github.com/yourusername/agentforge/issues) for good first issues
+2. Check [Issues](https://github.com/MixasV/agentforge/issues) for good first issues
 3. Join our community (Discord coming soon)
 4. Start contributing!
 

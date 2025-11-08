@@ -67,7 +67,7 @@ AgentForge is the first **no-code workflow automation platform** designed specif
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/agentforge.git
+git clone https://github.com/MixasV/agentforge.git
 cd agentforge
 ```
 
@@ -235,7 +235,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 - **Documentation**: [docs.agentforge.app](https://docs.agentforge.app)
 - **Discord**: [Join our community](https://discord.gg/agentforge)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/agentforge/issues)
+- **Issues**: [GitHub Issues](https://github.com/MixasV/agentforge/issues)
 - **Email**: support@agentforge.app
 
 ## 🤝 Partnership: Built on Dark Research Mallory

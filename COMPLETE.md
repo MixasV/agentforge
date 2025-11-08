@@ -324,8 +324,8 @@ cd frontend && npm install && npm run dev
 
 ## 📞 Контакты
 
-- **GitHub:** https://github.com/yourusername/agentforge
-- **Issues:** https://github.com/yourusername/agentforge/issues
+- **GitHub:** https://github.com/MixasV/agentforge
+- **Issues:** https://github.com/MixasV/agentforge/issues
 - **Discord:** Coming soon
 - **Docs:** См. документацию в репозитории
 

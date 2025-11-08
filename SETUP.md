@@ -19,7 +19,7 @@ Optional:
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/agentforge.git
+git clone https://github.com/MixasV/agentforge.git
 cd agentforge
 ```
 
@@ -309,7 +309,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for production setup:
 ## Support
 
 - **Documentation:** [docs](./docs/)
-- **Issues:** [GitHub Issues](https://github.com/yourusername/agentforge/issues)
+- **Issues:** [GitHub Issues](https://github.com/MixasV/agentforge/issues)
 - **Discord:** [Join community](https://discord.gg/agentforge)
 
 ---
