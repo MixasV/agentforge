@@ -1,6 +1,13 @@
 # Contributing to AgentForge
 
-We love your input! We want to make contributing to AgentForge as easy and transparent as possible.
+We welcome contributions! This document explains how to contribute.
+
+## Philosophy
+
+AgentForge follows the **Dark Research open source model**:
+- Code is a commodity (anyone can write it)
+- Real value is in **ecosystem and partnerships**
+- Contributors are valued and rewarded
 
 ## Development Process
 
@@ -21,25 +28,58 @@ Please read [AGENTS.md](AGENTS.md) for detailed coding guidelines.
 ### Key Principles
 
 - **NO FAKE IMPLEMENTATIONS** - Every function must be fully functional
+- **REAL CODE ONLY** - Complete implementation or nothing at all
 - **Code in English** - All code, comments, UI text
-- **Communication in Russian** - Responses to maintainers
 - **TypeScript Strict Mode** - Always
-- **No placeholders** - Complete implementation only
+- **No placeholders** - No stubs, no mocks in production code
+- **Proper error handling** - Every function must handle errors
+- **Write tests** - New features must include tests
+
+### TypeScript
+- Strict mode enabled
+- No `any` types (use generics)
+- Proper error handling
+
+### React
+- Functional components only
+- Use hooks (useState, useEffect, etc.)
+- Document complex components
+
+### Testing
+- Write tests for new features
+- Run tests before submitting PR: `npm test`
 
 ### Before Committing
 
 ```bash
 # Backend
 cd backend
-npm run lint
-npm run typecheck
-npm test
+pnpm lint
+pnpm typecheck
+pnpm test
 
 # Frontend
 cd frontend
-npm run lint
-npm run typecheck
-npm run build
+pnpm lint
+pnpm typecheck
+pnpm build
+```
+
+## Branches
+
+- `master` - Production ready code
+- `develop` - Development/staging (if exists)
+- `feature/*` - Feature branches
+- `fix/*` - Bug fixes
+
+## Commit Messages
+
+Use clear, descriptive messages:
+```
+feat: Add CDP Embedded Wallets support
+fix: Fix x402 payment timeout issue
+docs: Update README with CASH integration
+test: Add tests for workflow executor
 ```
 
 ## Reporting Bugs
@@ -77,13 +117,32 @@ We use GitHub Issues to track feature requests. Please provide:
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
+## Rewards (Merit System)
+
+Significant contributions can earn:
+
+### Tier 1: Bug fixes, small features
+- Credit in README
+- Contributor badge
+
+### Tier 2: Major features, SDK improvements
+- Potential Merit tokens (via [Merit.xyz](https://merit.xyz/))
+- Featured in release notes
+
+### Tier 3: Architecture improvements, major integrations
+- Direct compensation consideration
+- Core contributor status
+
+See [Merit.xyz](https://merit.xyz/) for more info.
+
 ## Dark Research Model
 
-AgentForge follows the [Dark Research open source strategy](https://www.darkresearch.ai/blog/project-open-source):
+AgentForge follows the [Dark Research open source strategy](https://www.darkresearch.ai/):
 
 - Core infrastructure is open source (MIT)
-- Contributors can earn via Merit system (coming soon)
-- Revenue sharing for block marketplace creators
+- Community-driven development
+- Partnership model with ecosystem providers
+- Revenue through hosted SaaS + premium features
 
 ### Block Marketplace
 

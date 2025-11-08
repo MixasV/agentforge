@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { X, Wallet, CheckCircle } from 'lucide-react';
+import { X, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
@@ -17,15 +17,18 @@ const PRESET_AMOUNTS = [
   { amount: 100, credits: 100000, label: 'Pro' },
 ];
 
+type Currency = 'USDC' | 'CASH';
+
 export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalProps) {
   const [selectedAmount, setSelectedAmount] = useState(50);
   const [customAmount, setCustomAmount] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>('USDC');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [, setTransactionId] = useState<string | null>(null);
 
   const prepayMutation = useMutation({
-    mutationFn: async (amountUsd: number) => {
-      const response = await api.post('/api/credits/prepay', { amountUsd });
+    mutationFn: async ({ amountUsd, currency }: { amountUsd: number; currency: Currency }) => {
+      const response = await api.post('/api/credits/prepay', { amountUsd, currency });
       return response.data;
     },
     onSuccess: (data) => {
@@ -69,13 +72,14 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
       return;
     }
 
-    prepayMutation.mutate(amount);
+    prepayMutation.mutate({ amountUsd: amount, currency: selectedCurrency });
   };
 
   const handleClose = () => {
     if (!isProcessing) {
       setSelectedAmount(50);
       setCustomAmount('');
+      setSelectedCurrency('USDC');
       setTransactionId(null);
       onClose();
     }
@@ -115,6 +119,52 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
               <p className="text-sm text-gray-400 mb-6">
                 Choose an amount to prepay. Credits never expire and can be used for all API calls.
               </p>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-3">Payment Method</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setSelectedCurrency('USDC')}
+                    className={clsx(
+                      'p-4 rounded-lg border-2 transition-all text-left',
+                      selectedCurrency === 'USDC'
+                        ? 'border-solana-purple bg-solana-purple/10'
+                        : 'border-dark-border hover:border-solana-purple/50'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">💵</span>
+                      <span className="font-semibold">USDC</span>
+                    </div>
+                    <p className="text-xs text-gray-400">Original stablecoin</p>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedCurrency('CASH')}
+                    className={clsx(
+                      'p-4 rounded-lg border-2 transition-all text-left',
+                      selectedCurrency === 'CASH'
+                        ? 'border-pink-600 bg-pink-600/10'
+                        : 'border-dark-border hover:border-pink-600/50'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">💰</span>
+                      <span className="font-semibold">Phantom CASH</span>
+                    </div>
+                    <p className="text-xs text-gray-400">New by Phantom</p>
+                  </button>
+                </div>
+              </div>
+
+              {selectedCurrency === 'CASH' && (
+                <div className="bg-pink-600/10 border border-pink-600/20 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-pink-300 flex items-center gap-2">
+                    <span>✨</span>
+                    Powered by Phantom CASH - Seamless payments through Phantom wallet
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-3 mb-6">
                 {PRESET_AMOUNTS.map((preset) => (
@@ -168,6 +218,12 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
                     ${customAmount || selectedAmount}
                   </span>
                 </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">Currency</span>
+                  <span className="font-semibold text-solana-purple">
+                    {selectedCurrency}
+                  </span>
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">Credits Issued</span>
                   <span className="font-semibold text-solana-green">
@@ -179,10 +235,15 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
               <button
                 onClick={handlePrepay}
                 disabled={prepayMutation.isPending}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-solana-purple to-solana-green text-dark-bg font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                className={clsx(
+                  'w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50',
+                  selectedCurrency === 'CASH'
+                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white'
+                    : 'bg-gradient-to-r from-solana-purple to-solana-green text-dark-bg'
+                )}
               >
                 <Wallet size={20} />
-                {prepayMutation.isPending ? 'Processing...' : 'Proceed with Payment'}
+                {prepayMutation.isPending ? 'Processing...' : `Proceed with ${selectedCurrency}`}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">

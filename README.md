@@ -31,6 +31,8 @@ AgentForge is the first **no-code workflow automation platform** designed specif
 - ✅ 10 pre-built blocks (Jupiter, Pump.fun, Helius, LLM, etc.)
 - ✅ Drag-and-drop workflow builder
 - ✅ x402 prepayment system (Coinbase facilitator)
+- ✅ **CDP Embedded Wallets** - Email login without seed phrases
+- ✅ **Phantom CASH** token support - New stablecoin payments
 - ✅ Telegram bot deployment
 - ✅ Real-time execution logs
 - ✅ Credits-based API charging
@@ -236,12 +238,49 @@ MIT License - see [LICENSE](LICENSE) file for details
 - **Issues**: [GitHub Issues](https://github.com/yourusername/agentforge/issues)
 - **Email**: support@agentforge.app
 
-## Acknowledgments
+## 🤝 Partnership: Built on Dark Research Mallory
 
-- Inspired by [n8n](https://github.com/n8n-io/n8n) architecture
-- Built on [Solana](https://solana.com) blockchain
-- Powered by [x402 protocol](https://solana.com/x402)
-- Following [Dark Research](https://www.darkresearch.ai) open source strategy
+AgentForge is built on the **Dark Research open source strategy** and integrates with **Mallory**, the open-source x402 primitives framework.
+
+### Why Mallory?
+
+[Dark Research](https://www.darkresearch.ai/) demonstrated that **software IP is trending to $0** - the real value is in ecosystem and infrastructure.
+
+AgentForge follows their playbook:
+- ✅ Core infrastructure **100% open source** (MIT license)
+- ✅ Community-driven development
+- ✅ Partnership model with ecosystem providers
+- ✅ Revenue through hosted SaaS + premium features
+
+### Mallory Integration
+
+AgentForge uses Mallory for:
+- x402 protocol implementation (payment verification, settlement)
+- Open-source primitives for agent-to-agent payments
+- Best practices in Web3 infrastructure
+
+### Contributing
+
+We follow Dark Research's contribution model:
+1. Fork the repository
+2. Create feature branch
+3. Submit PR with detailed description
+4. Community review
+5. Merge and deploy
+
+Contributors can earn through the **Merit system** (see [CONTRIBUTING.md](CONTRIBUTING.md))
+
+### Acknowledgments
+
+- Inspired by **Dark Research**'s open source philosophy
+- Using **Mallory** framework for x402 primitives
+- Partnering with **Solana Foundation**
+- Community-driven development
+
+---
+
+[More about Dark Research](https://www.darkresearch.ai/)  
+[Mallory Framework](https://github.com/darkresearchlab/mallory)
 
 ---
 

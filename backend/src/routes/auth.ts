@@ -66,4 +66,40 @@ router.post('/logout', authenticate, async (_req, res) => {
   });
 });
 
+const emailLoginSchema = z.object({
+  email: z.string().email(),
+});
+
+router.post('/cdp/login', async (req, res, next) => {
+  try {
+    const { email } = validateSchema(emailLoginSchema, req.body);
+    const result = await authService.initiateEmailLogin(email);
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const verifyOtpSchema = z.object({
+  flowId: z.string(),
+  otp: z.string().length(6),
+  email: z.string().email(),
+});
+
+router.post('/cdp/verify', async (req, res, next) => {
+  try {
+    const { flowId, otp, email } = validateSchema(verifyOtpSchema, req.body);
+    const result = await authService.verifyEmailOTP(flowId, otp, email);
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

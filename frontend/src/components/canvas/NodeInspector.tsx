@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWorkflowStore } from '@/store/workflowStore';
-import { Trash2, Play, X } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
 
 export function NodeInspector() {
@@ -58,17 +58,6 @@ export function NodeInspector() {
 
   const handleClose = () => {
     setSelectedNode(null);
-  };
-
-  const getInputType = (type: string) => {
-    switch (type) {
-      case 'number':
-        return 'number';
-      case 'boolean':
-        return 'checkbox';
-      default:
-        return 'text';
-    }
   };
 
   return (

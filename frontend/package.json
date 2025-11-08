@@ -1,6 +1,25 @@
 {
   "name": "agentforge-frontend",
   "version": "1.0.0",
+  "description": "AgentForge Frontend - No-code agent builder UI. Built on Dark Research philosophy.",
+  "keywords": [
+    "solana",
+    "x402",
+    "agents",
+    "no-code",
+    "react",
+    "workflow-builder",
+    "dark-research",
+    "cdp-wallets",
+    "phantom-cash"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MixasV/agentforge.git"
+  },
+  "homepage": "https://agentforge.app",
+  "author": "AgentForge Team",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

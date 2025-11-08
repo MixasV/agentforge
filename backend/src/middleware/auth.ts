@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuthRequest, AuthenticatedUser } from '../types';
+import { AuthRequest } from '../types';
 import { AuthenticationError } from '../utils/errors';
 import { logger } from '../utils/logger';
 
@@ -10,6 +10,7 @@ export interface JWTPayload {
   userId: string;
   walletAddress?: string;
   telegramUserId?: string;
+  email?: string;
 }
 
 export function generateToken(payload: JWTPayload): string {
@@ -27,7 +28,7 @@ export function verifyToken(token: string): JWTPayload {
 
 export async function authenticate(
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) {
   try {

@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Wallet } from 'lucide-react';
+import { Wallet, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { CDPLoginModal } from '@/components/auth/CDPLoginModal';
+import { useNavigate } from 'react-router-dom';
 
 export function Login() {
   const { loginWithPhantom, isLoggingIn } = useAuth();
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isCDPModalOpen, setIsCDPModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handlePhantomLogin = async () => {
     setIsConnecting(true);
@@ -25,7 +29,7 @@ export function Login() {
       const encodedMessage = new TextEncoder().encode(message);
       const signedMessage = await solana.signMessage(encodedMessage, 'utf8');
 
-      const signature = Buffer.from(signedMessage.signature).toString('base64');
+      const signature = btoa(String.fromCharCode(...signedMessage.signature));
 
       loginWithPhantom({
         walletAddress,
@@ -38,6 +42,11 @@ export function Login() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const handleCDPSuccess = (_token: string, user: any) => {
+    toast.success(`Welcome, ${user.email}!`);
+    navigate('/dashboard');
   };
 
   return (
@@ -54,24 +63,45 @@ export function Login() {
 
         <div className="bg-dark-card rounded-xl p-8 border border-dark-border">
           <h2 className="text-2xl font-semibold mb-6 text-center">
-            Connect Wallet
+            Choose Login Method
           </h2>
+
+          <button
+            onClick={() => setIsCDPModalOpen(true)}
+            disabled={isLoggingIn || isConnecting}
+            className="w-full bg-gradient-to-r from-solana-purple to-solana-green text-dark-bg font-semibold py-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-3 mb-4"
+          >
+            <Mail size={24} />
+            Login with Email (No Seed Phrase!)
+          </button>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-dark-border"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-dark-card text-gray-500">or if you prefer</span>
+            </div>
+          </div>
 
           <button
             onClick={handlePhantomLogin}
             disabled={isLoggingIn || isConnecting}
-            className="w-full bg-gradient-to-r from-solana-purple to-solana-green text-dark-bg font-semibold py-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-3"
+            className="w-full bg-gray-800 text-white font-semibold py-3 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-3"
           >
-            <Wallet size={24} />
-            {isConnecting || isLoggingIn ? 'Connecting...' : 'Connect with Phantom'}
+            <Wallet size={20} />
+            {isConnecting || isLoggingIn ? 'Connecting...' : 'Login with Phantom (Advanced)'}
           </button>
 
           <p className="text-sm text-gray-500 text-center mt-6">
-            By connecting, you agree to our Terms of Service
+            By logging in, you agree to our Terms of Service
           </p>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-2">
+          <p className="text-sm text-gray-500">
+            <span className="text-solana-green">✓</span> No seed phrases with email login
+          </p>
           <p className="text-sm text-gray-500">
             Don't have Phantom?{' '}
             <a
@@ -85,6 +115,12 @@ export function Login() {
           </p>
         </div>
       </div>
+
+      <CDPLoginModal
+        isOpen={isCDPModalOpen}
+        onSuccess={handleCDPSuccess}
+        onClose={() => setIsCDPModalOpen(false)}
+      />
     </div>
   );
 }

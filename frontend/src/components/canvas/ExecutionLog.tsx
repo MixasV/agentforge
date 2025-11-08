@@ -14,7 +14,7 @@ interface LogEntry {
 
 export function ExecutionLog() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs] = useState<LogEntry[]>([]);
 
   const getStatusIcon = (status: LogEntry['status']) => {
     switch (status) {
