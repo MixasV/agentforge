@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
+import { ActivationToggle } from '@/components/workflow/ActivationToggle';
 import { useWorkflowStore } from '@/store/workflowStore';
 import { Node, Edge } from 'reactflow';
 import toast from 'react-hot-toast';
@@ -94,17 +95,24 @@ export function WorkflowEditor() {
 
   return (
     <div className="h-screen flex flex-col bg-dark-bg">
-      <div className="h-14 bg-dark-card border-b border-dark-border flex items-center px-6 gap-4">
-        <button
-          onClick={() => navigate('/workflows')}
-          className="p-2 hover:bg-dark-bg rounded-lg transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="font-semibold">{workflowData?.data?.name || 'Workflow'}</h1>
-          <p className="text-xs text-gray-500">ID: {id}</p>
+      <div className="h-14 bg-dark-card border-b border-dark-border flex items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/workflows')}
+            className="p-2 hover:bg-dark-bg rounded-lg transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="font-semibold">{workflowData?.data?.name || 'Workflow'}</h1>
+            <p className="text-xs text-gray-500">ID: {id}</p>
+          </div>
         </div>
+
+        <ActivationToggle 
+          workflowId={id!}
+          initialActive={workflowData?.data?.isActive || false}
+        />
       </div>
 
       <div className="flex-1">

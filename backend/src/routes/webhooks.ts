@@ -1,0 +1,107 @@
+import express, { Request, Response } from 'express';
+import { prisma } from '../utils/prisma';
+import { telegramService } from '../services/telegramService';
+import { logger } from '../utils/logger';
+
+const router = express.Router();
+
+router.post('/telegram/:workflowId', async (req: Request, res: Response) => {
+  try {
+    const { workflowId } = req.params;
+    const telegramUpdate = req.body;
+
+    logger.info('Telegram webhook received', { workflowId, update: telegramUpdate });
+
+    const registration = await prisma.triggerRegistration.findFirst({
+      where: {
+        workflowId,
+        triggerType: 'telegram',
+        isActive: true,
+      },
+    });
+
+    if (!registration) {
+      logger.warn('Webhook not registered or inactive', { workflowId });
+      return res.status(404).json({ 
+        ok: false, 
+        error: 'Webhook not registered' 
+      });
+    }
+
+    const parsedData = telegramService.parseTelegramUpdate(telegramUpdate);
+    
+    if (!parsedData) {
+      logger.warn('Invalid Telegram update format', { workflowId, update: telegramUpdate });
+      return res.status(200).json({ ok: true });
+    }
+
+    await prisma.triggerRegistration.update({
+      where: { id: registration.id },
+      data: {
+        lastTriggeredAt: new Date(),
+        triggerCount: { increment: 1 },
+      },
+    });
+
+    logger.info('Telegram message parsed', { 
+      workflowId, 
+      messageText: parsedData.messageText,
+      chatId: parsedData.chatId 
+    });
+
+    return res.status(200).json({ ok: true });
+
+  } catch (error: any) {
+    logger.error('Telegram webhook error', { error: error.message });
+    return res.status(500).json({ 
+      ok: false, 
+      error: error.message 
+    });
+  }
+});
+
+router.post('/generic/:workflowId', async (req: Request, res: Response) => {
+  try {
+    const { workflowId } = req.params;
+    const webhookData = req.body;
+
+    logger.info('Generic webhook received', { workflowId, data: webhookData });
+
+    const registration = await prisma.triggerRegistration.findFirst({
+      where: {
+        workflowId,
+        triggerType: 'webhook',
+        isActive: true,
+      },
+    });
+
+    if (!registration) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Webhook not registered' 
+      });
+    }
+
+    await prisma.triggerRegistration.update({
+      where: { id: registration.id },
+      data: {
+        lastTriggeredAt: new Date(),
+        triggerCount: { increment: 1 },
+      },
+    });
+
+    return res.status(200).json({ 
+      success: true,
+      message: 'Webhook received' 
+    });
+
+  } catch (error: any) {
+    logger.error('Generic webhook error', { error: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+export default router;

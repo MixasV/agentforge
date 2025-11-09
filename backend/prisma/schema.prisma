@@ -23,6 +23,7 @@ model User {
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
   credits               Credits?
+  settings              UserSettings?
   workflows             Workflow[]
   x402Transactions      X402Transaction[]
   apiUsage              ApiUsage[]
@@ -71,6 +72,7 @@ model Workflow {
   description       String?   @db.Text
   canvasJson        String    @map("canvas_json") @db.Text
   isActive          Boolean   @default(false) @map("is_active")
+  activatedAt       DateTime? @map("activated_at")
   deploymentType    String?   @map("deployment_type") @db.VarChar(50)
   deploymentConfig  Json?     @map("deployment_config")
   createdAt         DateTime  @default(now()) @map("created_at")
@@ -79,6 +81,7 @@ model Workflow {
 
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   executions        WorkflowExecution[]
+  triggers          TriggerRegistration[]
 
   @@map("workflows")
 }
@@ -93,7 +96,9 @@ model WorkflowExecution {
   executionTimeMs   Int?      @map("execution_time_ms")
   apiCallsCount     Int       @default(0) @map("api_calls_count")
   creditsUsed       BigInt    @default(0) @map("credits_used")
+  triggerType       String?   @map("trigger_type") @db.VarChar(50)
   createdAt         DateTime  @default(now()) @map("created_at")
+  completedAt       DateTime? @map("completed_at")
 
   workflow          Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   blockUsage        BlockUsage[]
@@ -150,4 +155,35 @@ model BlockUsage {
   author                  User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@map("block_usage")
+}
+
+model UserSettings {
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+  telegramBotToken      String?   @map("telegram_bot_token") @db.Text
+  telegramBotUsername   String?   @map("telegram_bot_username") @db.VarChar(255)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model TriggerRegistration {
+  id                String    @id @default(uuid())
+  workflowId        String    @map("workflow_id")
+  triggerType       String    @map("trigger_type") @db.VarChar(50)
+  webhookUrl        String?   @map("webhook_url") @db.VarChar(500)
+  schedule          String?   @db.VarChar(255)
+  config            Json?
+  isActive          Boolean   @default(true) @map("is_active")
+  lastTriggeredAt   DateTime? @map("last_triggered_at")
+  triggerCount      Int       @default(0) @map("trigger_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  workflow          Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@map("trigger_registrations")
 }

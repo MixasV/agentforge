@@ -4,6 +4,8 @@ import authRoutes from './routes/auth';
 import creditsRoutes from './routes/credits';
 import workflowRoutes from './routes/workflows';
 import blocksRoutes from './routes/blocks';
+import settingsRoutes from './routes/settings';
+import webhooksRoutes from './routes/webhooks';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 
@@ -41,6 +43,8 @@ app.use('/auth', authRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/blocks', blocksRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/webhook', webhooksRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

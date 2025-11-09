@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { workflowService } from '../services/workflowService';
 import { workflowExecutor } from '../services/workflowExecutor';
+import { workflowActivationService } from '../services/workflowActivationService';
 import { authenticate } from '../middleware/auth';
 import {
   validateSchema,
@@ -139,6 +140,59 @@ router.get('/:id/executions', authenticate, async (req: AuthRequest, res, next) 
     return res.json({
       success: true,
       data: result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/:id/activate', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    const workflowId = validateSchema(uuidSchema, req.params.id);
+    const result = await workflowActivationService.activateWorkflow(workflowId, req.user.id);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error,
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        triggersRegistered: result.triggersRegistered,
+        message: 'Workflow activated successfully',
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/:id/deactivate', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    const workflowId = validateSchema(uuidSchema, req.params.id);
+    const result = await workflowActivationService.deactivateWorkflow(workflowId, req.user.id);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Workflow deactivated successfully',
     });
   } catch (error) {
     return next(error);
