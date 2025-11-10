@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 import { Node, Edge } from 'reactflow';
 
+export type NodeExecutionState = 'idle' | 'executing' | 'success' | 'error';
+
 interface WorkflowState {
   nodes: Node[];
   edges: Edge[];
   selectedNode: Node | null;
+  executionStates: Record<string, NodeExecutionState>;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   addNode: (node: Node) => void;
@@ -12,12 +15,15 @@ interface WorkflowState {
   removeNode: (nodeId: string) => void;
   setSelectedNode: (node: Node | null) => void;
   clearWorkflow: () => void;
+  setNodeExecutionState: (nodeId: string, state: NodeExecutionState) => void;
+  clearExecutionStates: () => void;
 }
 
 export const useWorkflowStore = create<WorkflowState>((set) => ({
   nodes: [],
   edges: [],
   selectedNode: null,
+  executionStates: {},
 
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
@@ -45,5 +51,15 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
 
   setSelectedNode: (node) => set({ selectedNode: node }),
 
-  clearWorkflow: () => set({ nodes: [], edges: [], selectedNode: null }),
+  clearWorkflow: () => set({ nodes: [], edges: [], selectedNode: null, executionStates: {} }),
+
+  setNodeExecutionState: (nodeId, state) =>
+    set((prevState) => ({
+      executionStates: {
+        ...prevState.executionStates,
+        [nodeId]: state,
+      },
+    })),
+
+  clearExecutionStates: () => set({ executionStates: {} }),
 }));

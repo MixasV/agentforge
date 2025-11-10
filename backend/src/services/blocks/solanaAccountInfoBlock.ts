@@ -28,6 +28,15 @@ export const solanaAccountInfoBlock: BlockDefinition = {
     try {
       const { accountAddress } = inputs;
 
+      if (!accountAddress) {
+        logger.warn('No account address provided, skipping execution');
+        return {
+          skipped: true,
+          reason: 'No account address provided',
+          note: 'This is expected during manual testing without trigger data',
+        };
+      }
+
       const connection = new Connection(RPC_ENDPOINT, 'confirmed');
       const publicKey = new PublicKey(accountAddress as string);
 

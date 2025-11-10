@@ -92,12 +92,14 @@ export function NodeInspector() {
             <div
               className={clsx(
                 'p-3 rounded-lg',
+                selectedNode.data.category === 'trigger' && 'bg-green-400/10 text-green-400',
                 selectedNode.data.category === 'data' && 'bg-blue-400/10 text-blue-400',
                 selectedNode.data.category === 'action' && 'bg-red-400/10 text-red-400',
                 selectedNode.data.category === 'logic' && 'bg-yellow-400/10 text-yellow-400',
                 selectedNode.data.category === 'ai' && 'bg-purple-400/10 text-purple-400'
               )}
             >
+              {selectedNode.data.category === 'trigger' && '⚡'}
               {selectedNode.data.category === 'data' && '📊'}
               {selectedNode.data.category === 'action' && '⚡'}
               {selectedNode.data.category === 'logic' && '🔀'}
@@ -117,6 +119,11 @@ export function NodeInspector() {
                 <label className="block text-sm font-medium mb-2">
                   {input.name}
                   {input.required && <span className="text-red-400 ml-1">*</span>}
+                  {input.type === 'select' && config[input.name] && (
+                    <span className="ml-2 text-xs text-gray-500">
+                      ({(input as any).options?.find((o: any) => o.value === config[input.name])?.label || config[input.name]})
+                    </span>
+                  )}
                 </label>
                 {input.type === 'number' ? (
                   <input
@@ -127,6 +134,18 @@ export function NodeInspector() {
                     required={input.required}
                     className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
                   />
+                ) : input.type === 'select' ? (
+                  <select
+                    value={config[input.name] || (input as any).default || ''}
+                    onChange={(e) => handleConfigChange(input.name, e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:border-solana-purple"
+                  >
+                    {(input as any).options?.map((option: any) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : input.type === 'boolean' ? (
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input

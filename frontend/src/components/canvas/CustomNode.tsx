@@ -1,11 +1,14 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Database, Zap, GitBranch, Brain, LucideIcon } from 'lucide-react';
+import { Database, Zap, GitBranch, Brain, Check, X, Loader2, LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
+import { useWorkflowStore } from '../../store/workflowStore';
+import '../../styles/nodeExecution.css';
 
-type Category = 'data' | 'action' | 'logic' | 'ai';
+type Category = 'data' | 'action' | 'logic' | 'ai' | 'trigger';
 
 const CATEGORY_ICONS: Record<Category, LucideIcon> = {
+  trigger: Zap,
   data: Database,
   action: Zap,
   logic: GitBranch,
@@ -19,6 +22,13 @@ const CATEGORY_STYLES: Record<Category, {
   iconColor: string;
   shadow: string;
 }> = {
+  trigger: {
+    border: 'border-green-400/50',
+    bg: 'bg-green-400/10',
+    iconBg: 'bg-green-400/20',
+    iconColor: 'text-green-400',
+    shadow: 'shadow-green-400/20',
+  },
   data: {
     border: 'border-blue-400/50',
     bg: 'bg-blue-400/10',
@@ -49,46 +59,77 @@ const CATEGORY_STYLES: Record<Category, {
   },
 };
 
-export const CustomNode = memo(({ data, selected }: NodeProps) => {
+export const CustomNode = memo(({ data, selected, id }: NodeProps) => {
   const category = (data.category as Category) || 'data';
   const Icon = CATEGORY_ICONS[category];
   const styles = CATEGORY_STYLES[category];
+  
+  // Get execution state from store
+  const executionState = useWorkflowStore((state) => state.executionStates[id]) || 'idle';
+
+  // Execution indicator icons
+  const ExecutionIndicator = () => {
+    if (executionState === 'executing') {
+      return (
+        <div className="execution-indicator executing">
+          <Loader2 size={12} className="text-white animate-spin" />
+        </div>
+      );
+    }
+    if (executionState === 'success') {
+      return (
+        <div className="execution-indicator success">
+          <Check size={12} className="text-white" />
+        </div>
+      );
+    }
+    if (executionState === 'error') {
+      return (
+        <div className="execution-indicator error">
+          <X size={12} className="text-white" />
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div
+      data-execution-state={executionState}
       className={clsx(
-        'px-4 py-3 rounded-lg border-2 transition-all min-w-[240px] max-w-[280px]',
-        'bg-dark-card shadow-lg',
+        'px-2 py-1.5 rounded border transition-all w-[140px] relative',
+        'bg-dark-card shadow-sm',
         styles.border,
-        selected ? `${styles.shadow} shadow-lg ring-2 ring-offset-2 ring-offset-dark-bg ${styles.border}` : ''
+        selected ? `${styles.shadow} shadow-md ring-1 ring-offset-1 ring-offset-dark-bg ${styles.border}` : ''
       )}
     >
+      <ExecutionIndicator />
       <Handle
         type="target"
         position={Position.Left}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-dark-bg"
+        className="!bg-gray-400 !w-1.5 !h-1.5 !border-0"
       />
 
-      <div className="flex items-start gap-3">
-        <div className={clsx('p-2 rounded-md', styles.iconBg)}>
-          <Icon size={20} className={styles.iconColor} />
+      <div className="flex items-start gap-1.5">
+        <div className={clsx('p-1 rounded', styles.iconBg)}>
+          <Icon size={12} className={styles.iconColor} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm text-white mb-1 truncate">
+          <h3 className="font-medium text-[10px] text-white mb-0.5 truncate leading-tight">
             {data.label}
           </h3>
           {data.description && (
-            <p className="text-xs text-gray-400 line-clamp-2 mb-2">
+            <p className="text-[8px] text-gray-400 line-clamp-2 mb-0.5 leading-tight">
               {data.description}
             </p>
           )}
-          <div className="flex items-center gap-2">
-            <span className={clsx('text-xs px-2 py-0.5 rounded', styles.bg, styles.iconColor)}>
+          <div className="flex items-center gap-1">
+            <span className={clsx('text-[8px] px-1 py-0.5 rounded leading-none', styles.bg, styles.iconColor)}>
               {category}
             </span>
-            {data.creditsCost !== undefined && (
-              <span className="text-xs text-gray-500">
-                {data.creditsCost === 0 ? 'FREE' : `${data.creditsCost}c`}
+            {data.creditsCost !== undefined && data.creditsCost > 0 && (
+              <span className="text-[8px] text-gray-500 leading-none">
+                {data.creditsCost}c
               </span>
             )}
           </div>
@@ -98,7 +139,7 @@ export const CustomNode = memo(({ data, selected }: NodeProps) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-dark-bg"
+        className="!bg-gray-400 !w-1.5 !h-1.5 !border-0"
       />
     </div>
   );

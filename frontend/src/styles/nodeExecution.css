@@ -1,0 +1,87 @@
+/* Node Execution Visual States */
+
+/* Base node styles */
+.react-flow__node {
+  transition: all 0.3s ease;
+}
+
+/* Executing state - pulsing blue border */
+.react-flow__node[data-execution-state="executing"] {
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  animation: pulse-blue 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-blue {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+  }
+}
+
+/* Success state - green border */
+.react-flow__node[data-execution-state="success"] {
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+/* Error state - red border */
+.react-flow__node[data-execution-state="error"] {
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+/* Execution indicator icons */
+.execution-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.execution-indicator.executing {
+  background-color: #3b82f6;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.execution-indicator.success {
+  background-color: #10b981;
+}
+
+.execution-indicator.error {
+  background-color: #ef4444;
+}
+
+/* Icon content */
+.execution-indicator svg {
+  width: 12px;
+  height: 12px;
+  fill: white;
+}
+
+/* Spinner for executing state */
+.execution-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  animation: spin 0.8s linear infinite;
+}

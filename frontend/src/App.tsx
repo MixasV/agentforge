@@ -8,6 +8,7 @@ import { WorkflowEditor } from '@/pages/WorkflowEditor';
 import { Billing } from '@/pages/Billing';
 import { Settings } from '@/pages/Settings';
 import { Blocks } from '@/pages/Blocks';
+import { SessionAuth } from '@/pages/SessionAuth';
 import { useAuthStore } from '@/store/authStore';
 
 const queryClient = new QueryClient({
@@ -30,6 +31,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/session-auth" element={<SessionAuth />} />
           <Route
             path="/dashboard"
             element={

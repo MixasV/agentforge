@@ -123,22 +123,202 @@ export class TelegramService {
     }
   }
 
-  async sendMessage(botToken: string, chatId: string, text: string): Promise<boolean> {
+  async sendMessage(
+    botToken: string, 
+    chatId: string, 
+    text: string,
+    parseMode: string = 'HTML'
+  ): Promise<{ ok: boolean; message_id?: number; description?: string }> {
     try {
       const url = `${this.getApiUrl(botToken)}/sendMessage`;
       const response = await axios.post(url, {
         chat_id: chatId,
         text,
-        parse_mode: 'HTML',
+        parse_mode: parseMode,
       });
 
-      return response.data.ok;
+      if (response.data.ok) {
+        return {
+          ok: true,
+          message_id: response.data.result.message_id,
+        };
+      } else {
+        return {
+          ok: false,
+          description: response.data.description,
+        };
+      }
     } catch (error: any) {
       logger.error('Failed to send Telegram message', { 
         chatId, 
         error: error.message 
       });
-      return false;
+      return {
+        ok: false,
+        description: error.message,
+      };
+    }
+  }
+
+  async sendMessageWithKeyboard(
+    botToken: string,
+    chatId: string,
+    text: string,
+    keyboard: any[][],
+    parseMode: string = 'HTML'
+  ): Promise<{ ok: boolean; message_id?: number; description?: string }> {
+    try {
+      const url = `${this.getApiUrl(botToken)}/sendMessage`;
+      const response = await axios.post(url, {
+        chat_id: chatId,
+        text,
+        parse_mode: parseMode,
+        reply_markup: {
+          inline_keyboard: keyboard,
+        },
+      });
+
+      if (response.data.ok) {
+        return {
+          ok: true,
+          message_id: response.data.result.message_id,
+        };
+      } else {
+        return {
+          ok: false,
+          description: response.data.description,
+        };
+      }
+    } catch (error: any) {
+      logger.error('Failed to send Telegram message with keyboard', {
+        chatId,
+        error: error.message,
+      });
+      return {
+        ok: false,
+        description: error.message,
+      };
+    }
+  }
+
+  async editMessage(
+    botToken: string,
+    chatId: string,
+    messageId: number,
+    newText: string,
+    parseMode: string = 'HTML'
+  ): Promise<{ ok: boolean; description?: string }> {
+    try {
+      const url = `${this.getApiUrl(botToken)}/editMessageText`;
+      const response = await axios.post(url, {
+        chat_id: chatId,
+        message_id: messageId,
+        text: newText,
+        parse_mode: parseMode,
+      });
+
+      return {
+        ok: response.data.ok,
+        description: response.data.description,
+      };
+    } catch (error: any) {
+      logger.error('Failed to edit Telegram message', {
+        chatId,
+        messageId,
+        error: error.message,
+      });
+      return {
+        ok: false,
+        description: error.message,
+      };
+    }
+  }
+
+  async deleteMessage(
+    botToken: string,
+    chatId: string,
+    messageId: number
+  ): Promise<{ ok: boolean; description?: string }> {
+    try {
+      const url = `${this.getApiUrl(botToken)}/deleteMessage`;
+      const response = await axios.post(url, {
+        chat_id: chatId,
+        message_id: messageId,
+      });
+
+      return {
+        ok: response.data.ok,
+        description: response.data.description,
+      };
+    } catch (error: any) {
+      logger.error('Failed to delete Telegram message', {
+        chatId,
+        messageId,
+        error: error.message,
+      });
+      return {
+        ok: false,
+        description: error.message,
+      };
+    }
+  }
+
+  async answerCallbackQuery(
+    botToken: string,
+    callbackQueryId: string,
+    text?: string,
+    showAlert: boolean = false
+  ): Promise<{ ok: boolean; description?: string }> {
+    try {
+      const url = `${this.getApiUrl(botToken)}/answerCallbackQuery`;
+      const response = await axios.post(url, {
+        callback_query_id: callbackQueryId,
+        text,
+        show_alert: showAlert,
+      });
+
+      return {
+        ok: response.data.ok,
+        description: response.data.description,
+      };
+    } catch (error: any) {
+      logger.error('Failed to answer callback query', {
+        callbackQueryId,
+        error: error.message,
+      });
+      return {
+        ok: false,
+        description: error.message,
+      };
+    }
+  }
+
+  async sendChatAction(
+    botToken: string,
+    chatId: string,
+    action: string
+  ): Promise<{ ok: boolean; description?: string }> {
+    try {
+      const url = `${this.getApiUrl(botToken)}/sendChatAction`;
+      const response = await axios.post(url, {
+        chat_id: chatId,
+        action: action,
+      });
+
+      return {
+        ok: response.data.ok,
+        description: response.data.description,
+      };
+    } catch (error: any) {
+      logger.error('Failed to send chat action', {
+        chatId,
+        action,
+        error: error.message,
+      });
+      return {
+        ok: false,
+        description: error.message,
+      };
     }
   }
 

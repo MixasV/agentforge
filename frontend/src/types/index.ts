@@ -83,7 +83,7 @@ export interface BlockDefinition {
   type: string;
   name: string;
   description: string;
-  category: 'data' | 'action' | 'logic' | 'ai';
+  category: 'data' | 'action' | 'logic' | 'ai' | 'trigger';
   inputs: Array<{
     name: string;
     type: string;

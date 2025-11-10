@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
 import { ActivationToggle } from '@/components/workflow/ActivationToggle';
 import { useWorkflowStore } from '@/store/workflowStore';
+import { useExecutionStream } from '@/hooks/useExecutionStream';
 import { Node, Edge } from 'reactflow';
 import toast from 'react-hot-toast';
 import { ArrowLeft } from 'lucide-react';
@@ -13,6 +14,10 @@ export function WorkflowEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setNodes, setEdges, clearWorkflow } = useWorkflowStore();
+  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
+  
+  // Connect to execution stream for real-time updates
+  useExecutionStream(id || '', currentExecutionId);
 
   const { data: workflowData, isLoading } = useQuery({
     queryKey: ['workflow', id],
@@ -79,7 +84,16 @@ export function WorkflowEditor() {
   };
 
   const handleRun = () => {
-    runMutation.mutate();
+    runMutation.mutate(undefined, {
+      onSuccess: (data: any) => {
+        // Set execution ID to start SSE stream
+        if (data?.data?.executionId) {
+          setCurrentExecutionId(data.data.executionId);
+          console.log('[WorkflowEditor] Execution started:', data.data.executionId);
+        }
+        toast.success('Workflow execution started');
+      },
+    });
   };
 
   if (isLoading) {
@@ -94,8 +108,8 @@ export function WorkflowEditor() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-dark-bg">
-      <div className="h-14 bg-dark-card border-b border-dark-border flex items-center justify-between px-6">
+    <div className="h-screen flex flex-col bg-dark-bg overflow-hidden">
+      <div className="h-14 bg-dark-card border-b border-dark-border flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/workflows')}
@@ -115,7 +129,7 @@ export function WorkflowEditor() {
         />
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <WorkflowCanvas workflowId={id} onSave={handleSave} onRun={handleRun} />
       </div>
     </div>

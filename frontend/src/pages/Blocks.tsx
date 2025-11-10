@@ -7,6 +7,7 @@ import { Search, Database, Zap, GitBranch, Brain, Download, Star } from 'lucide-
 import clsx from 'clsx';
 
 const CATEGORY_ICONS = {
+  trigger: Zap,
   data: Database,
   action: Zap,
   logic: GitBranch,
@@ -14,6 +15,7 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_COLORS = {
+  trigger: 'text-green-400 bg-green-400/10 border-green-400/20',
   data: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
   action: 'text-red-400 bg-red-400/10 border-red-400/20',
   logic: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
@@ -43,6 +45,7 @@ export function Blocks() {
   });
 
   const categories = [
+    { id: 'trigger', name: 'Triggers', count: blocks.filter((b) => b.category === 'trigger').length },
     { id: 'data', name: 'Data Sources', count: blocks.filter((b) => b.category === 'data').length },
     { id: 'action', name: 'Actions', count: blocks.filter((b) => b.category === 'action').length },
     { id: 'logic', name: 'Logic', count: blocks.filter((b) => b.category === 'logic').length },

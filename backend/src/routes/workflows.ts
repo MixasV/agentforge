@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { workflowService } from '../services/workflowService';
-import { workflowExecutor } from '../services/workflowExecutor';
+import { WorkflowExecutor } from '../services/workflowExecutor';
 import { workflowActivationService } from '../services/workflowActivationService';
+import { broadcastExecutionEvent } from './executionStream';
 import { authenticate } from '../middleware/auth';
+import { prisma } from '../utils/prisma';
+import { NotFoundError } from '../utils/errors';
 import {
   validateSchema,
   paginationSchema,
@@ -115,7 +118,28 @@ router.post('/:id/run', authenticate, async (req: AuthRequest, res, next) => {
     const workflowId = validateSchema(uuidSchema, req.params.id);
     const { inputs } = validateSchema(workflowRunSchema, req.body);
 
-    const result = await workflowExecutor.execute(workflowId, req.user.id, inputs || {});
+    const workflow = await prisma.workflow.findUnique({
+      where: { id: workflowId, userId: req.user.id },
+    });
+    if (!workflow) {
+      throw new NotFoundError('Workflow not found');
+    }
+
+    const executor = new WorkflowExecutor();
+    
+    executor.on('nodeStarted', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeStarted', ...event });
+    });
+    
+    executor.on('nodeCompleted', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeCompleted', ...event });
+    });
+    
+    executor.on('nodeFailed', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeFailed', ...event });
+    });
+
+    const result = await executor.execute(workflowId, req.user.id, inputs || {});
 
     return res.json({
       success: true,

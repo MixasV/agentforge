@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { telegramService } from '../services/telegramService';
 import { logger } from '../utils/logger';
+import { WorkflowExecutor } from '../services/workflowExecutor';
+import { broadcastExecutionEvent } from './executionStream';
 
 const router = express.Router();
 
@@ -35,20 +37,59 @@ router.post('/telegram/:workflowId', async (req: Request, res: Response) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Save last webhook data for testing (like n8n's pinned data)
     await prisma.triggerRegistration.update({
       where: { id: registration.id },
       data: {
         lastTriggeredAt: new Date(),
         triggerCount: { increment: 1 },
+        lastTriggerData: telegramUpdate, // Save full webhook data
       },
     });
 
-    logger.info('Telegram message parsed', { 
+    logger.info('Telegram message parsed and saved', { 
       workflowId, 
       messageText: parsedData.messageText,
       chatId: parsedData.chatId 
     });
 
+    // Execute workflow with trigger data
+    const workflow = await prisma.workflow.findUnique({
+      where: { id: workflowId },
+    });
+
+    if (!workflow) {
+      logger.error('Workflow not found for webhook', { workflowId });
+      return res.status(404).json({ ok: false, error: 'Workflow not found' });
+    }
+
+    // Execute workflow asynchronously (don't wait for completion)
+    const executor = new WorkflowExecutor();
+    
+    executor.on('nodeStarted', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeStarted', ...event });
+    });
+    
+    executor.on('nodeCompleted', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeCompleted', ...event });
+    });
+    
+    executor.on('nodeFailed', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeFailed', ...event });
+    });
+
+    executor.execute(workflowId, workflow.userId, { triggerData: telegramUpdate })
+      .then(() => {
+        logger.info('Workflow executed from webhook', { workflowId });
+      })
+      .catch((error) => {
+        logger.error('Workflow execution from webhook failed', { 
+          workflowId, 
+          error: error.message 
+        });
+      });
+
+    // Respond immediately to Telegram
     return res.status(200).json({ ok: true });
 
   } catch (error: any) {

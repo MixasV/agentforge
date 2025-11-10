@@ -34,21 +34,37 @@ export interface WorkflowCanvas {
   edges: WorkflowEdge[];
 }
 
+export interface BlockExecutionContext {
+  triggerData?: any;
+  workflowId?: string;
+  executionId?: string;
+  userId?: string;
+  isManualRun?: boolean;
+  envVars?: Record<string, string>;
+  nodeOutputs?: Record<string, Record<string, unknown>>;
+  creditsUsed?: number;
+}
+
 export interface BlockDefinition {
   name: string;
   description: string;
-  category: 'data' | 'action' | 'logic' | 'ai';
+  category: 'data' | 'action' | 'logic' | 'ai' | 'trigger';
   inputs: BlockInput[];
   outputs: BlockOutput[];
   creditsCost: number;
-  execute: (inputs: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  execute?: (
+    inputs: Record<string, unknown>, 
+    context?: BlockExecutionContext
+  ) => Promise<Record<string, unknown>>;
 }
 
 export interface BlockInput {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'select';
   required: boolean;
   description?: string;
+  options?: Array<{ value: string; label: string; credits?: number }>;
+  default?: string;
 }
 
 export interface BlockOutput {
@@ -63,6 +79,7 @@ export interface ExecutionContext {
   creditsUsed: number;
   userId: string;
   workflowId: string;
+  envVars?: Record<string, string>;
 }
 
 export interface X402Payment {

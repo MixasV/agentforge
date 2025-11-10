@@ -127,12 +127,19 @@ export class WorkflowActivationService {
   }
 
   private findTriggerNodes(nodes: any[]): TriggerNode[] {
-    return nodes.filter(node => 
-      node.type === 'telegram_trigger' ||
-      node.type === 'schedule_trigger' ||
-      node.type === 'manual_trigger' ||
-      node.type === 'webhook_trigger'
-    );
+    return nodes.filter(node => {
+      const nodeType = node.data?.type || node.type;
+      return (
+        nodeType === 'telegram_trigger' ||
+        nodeType === 'schedule_trigger' ||
+        nodeType === 'manual_trigger' ||
+        nodeType === 'webhook_trigger'
+      );
+    }).map(node => ({
+      id: node.id,
+      type: node.data?.type || node.type,
+      data: node.data || {}
+    }));
   }
 
   private async registerTrigger(
@@ -142,7 +149,7 @@ export class WorkflowActivationService {
   ): Promise<void> {
     switch (trigger.type) {
       case 'telegram_trigger':
-        await this.registerTelegramTrigger(workflowId, userId);
+        await this.registerTelegramTrigger(workflowId, userId, trigger);
         break;
       case 'schedule_trigger':
         await this.registerScheduleTrigger(workflowId, trigger);
@@ -158,11 +165,15 @@ export class WorkflowActivationService {
     }
   }
 
-  private async registerTelegramTrigger(workflowId: string, userId: string): Promise<void> {
-    const botToken = await userSettingsService.getTelegramBotToken(userId);
+  private async registerTelegramTrigger(workflowId: string, userId: string, trigger?: TriggerNode): Promise<void> {
+    let botToken = trigger?.data?.config?.botToken;
 
     if (!botToken) {
-      throw new Error('Please configure Telegram bot token in Settings first');
+      botToken = await userSettingsService.getTelegramBotToken(userId);
+    }
+
+    if (!botToken) {
+      throw new Error('Please provide bot token in Telegram Trigger block or configure it in Settings');
     }
 
     const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/webhook/telegram/${workflowId}`;
@@ -179,6 +190,7 @@ export class WorkflowActivationService {
         triggerType: 'telegram',
         webhookUrl,
         isActive: true,
+        config: { botToken },
       },
     });
 

@@ -6,6 +6,11 @@ import workflowRoutes from './routes/workflows';
 import blocksRoutes from './routes/blocks';
 import settingsRoutes from './routes/settings';
 import webhooksRoutes from './routes/webhooks';
+import sessionKeysRoutes from './routes/sessionKeys';
+import aiAssistRoutes from './routes/aiAssist';
+import aiChatRoutes from './routes/aiChat';
+import workflowVariablesRoutes from './routes/workflowVariables';
+import executionStreamRoutes from './routes/executionStream';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 
@@ -42,8 +47,13 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/workflows', workflowRoutes);
+app.use('/api/workflows', workflowVariablesRoutes);
+app.use('/api/workflows', aiChatRoutes);
+app.use('/api/workflows', executionStreamRoutes);
 app.use('/api/blocks', blocksRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/session', sessionKeysRoutes);
+app.use('/api/ai', aiAssistRoutes);
 app.use('/webhook', webhooksRoutes);
 
 app.use(notFoundHandler);
