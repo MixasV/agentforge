@@ -225,6 +225,15 @@ export class WorkflowActivationService {
       throw new Error(result.description || 'Failed to set Telegram webhook');
     }
 
+    // Delete old registrations for this workflow (cleanup duplicates)
+    await prisma.triggerRegistration.deleteMany({
+      where: {
+        workflowId,
+        triggerType: 'telegram',
+      },
+    });
+
+    // Create new registration
     await prisma.triggerRegistration.create({
       data: {
         workflowId,
