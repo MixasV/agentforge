@@ -114,8 +114,14 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
           const dbValue = savedVar?.value === '********' ? '' : savedVar?.value;
           const configValue = node.data.config?.[varName];
           
-          // Priority: DB value > canvas config value (only if no DB value)
-          const finalValue = dbValue || configValue || '';
+          // Priority: DB value FIRST, ignore canvas if it's a placeholder
+          let finalValue = '';
+          if (dbValue) {
+            finalValue = dbValue;
+          } else if (configValue && !configValue.includes('{{')) {
+            // Only use canvas value if it's NOT a placeholder
+            finalValue = configValue;
+          }
           
           varMap.set(varName, {
             id: savedVar?.id,
