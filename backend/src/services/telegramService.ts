@@ -45,10 +45,18 @@ export class TelegramService {
       
       const url = `${this.getApiUrl(botToken)}/setWebhook`;
       
+      logger.info('Setting webhook', { url, webhookUrl });
+      
       const response = await axios.post(url, {
         url: webhookUrl,
         allowed_updates: ['message'],
         drop_pending_updates: true,
+      });
+
+      logger.info('Telegram API response', { 
+        ok: response.data.ok, 
+        result: response.data.result,
+        description: response.data.description 
       });
 
       if (response.data.ok) {
@@ -67,11 +75,12 @@ export class TelegramService {
     } catch (error: any) {
       logger.error('Error setting Telegram webhook', { 
         webhookUrl, 
-        error: error.message 
+        error: error.message,
+        response: error.response?.data 
       });
       return { 
         success: false, 
-        description: error.message 
+        description: error.response?.data?.description || error.message 
       };
     }
   }

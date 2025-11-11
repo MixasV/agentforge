@@ -208,6 +208,18 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
         });
       }
 
+      // 1.5. If this is TELEGRAM_BOT_TOKEN, also save to user settings
+      if (varName === 'TELEGRAM_BOT_TOKEN' || varName === 'botToken') {
+        try {
+          await api.post('/api/settings/telegram', {
+            botToken: value,
+          });
+          toast.success('✅ Bot token also saved to Settings!');
+        } catch (err) {
+          console.warn('Failed to save bot token to Settings:', err);
+        }
+      }
+
       // 2. Update all blocks that use this variable
       const { setNodes } = useWorkflowStore.getState();
       const updatedNodes = nodes.map(node => {

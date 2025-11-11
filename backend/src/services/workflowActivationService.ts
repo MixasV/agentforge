@@ -167,13 +167,25 @@ export class WorkflowActivationService {
 
   private async registerTelegramTrigger(workflowId: string, userId: string, trigger?: TriggerNode): Promise<void> {
     let botToken = trigger?.data?.config?.botToken;
+    
+    logger.info('Getting bot token', { 
+      fromTrigger: !!botToken, 
+      tokenValue: botToken?.substring(0, 20) 
+    });
 
-    if (!botToken) {
-      botToken = await userSettingsService.getTelegramBotToken(userId);
+    // If token from trigger is a placeholder like {{env.XXX}}, ignore it
+    if (botToken && botToken.includes('{{')) {
+      logger.warn('Bot token is a placeholder, fetching from Settings', { botToken });
+      botToken = null;
     }
 
     if (!botToken) {
-      throw new Error('Please provide bot token in Telegram Trigger block or configure it in Settings');
+      botToken = await userSettingsService.getTelegramBotToken(userId);
+      logger.info('Bot token from Settings', { hasToken: !!botToken });
+    }
+
+    if (!botToken) {
+      throw new Error('Please configure bot token in Settings or add real token to Telegram Trigger block');
     }
 
     // Use /webhooks (plural) to match API documentation
