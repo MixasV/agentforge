@@ -49,7 +49,7 @@ export class TelegramService {
       
       const response = await axios.post(url, {
         url: webhookUrl,
-        allowed_updates: ['message'],
+        allowed_updates: ['message', 'callback_query'],
         drop_pending_updates: true,
       });
 
