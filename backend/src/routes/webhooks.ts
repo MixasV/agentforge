@@ -7,6 +7,15 @@ import { broadcastExecutionEvent } from './executionStream';
 
 const router = express.Router();
 
+// GET handler for Telegram webhook verification
+router.get('/telegram/:workflowId', async (req: Request, res: Response) => {
+  // Telegram sends GET request to verify webhook URL is accessible
+  return res.status(200).json({ 
+    ok: true,
+    message: 'Webhook endpoint ready' 
+  });
+});
+
 router.post('/telegram/:workflowId', async (req: Request, res: Response) => {
   try {
     const { workflowId } = req.params;
@@ -99,6 +108,14 @@ router.post('/telegram/:workflowId', async (req: Request, res: Response) => {
       error: error.message 
     });
   }
+});
+
+// GET handler for generic webhook verification
+router.get('/generic/:workflowId', async (req: Request, res: Response) => {
+  return res.status(200).json({ 
+    ok: true,
+    message: 'Webhook endpoint ready' 
+  });
 });
 
 router.post('/generic/:workflowId', async (req: Request, res: Response) => {
