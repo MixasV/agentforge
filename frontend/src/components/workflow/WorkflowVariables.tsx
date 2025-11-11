@@ -143,7 +143,7 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
 
   const allVariables = extractedVariables();
 
-  // Initialize variables state with saved values on mount and when saved variables change
+  // Initialize variables state ONCE on mount - don't re-sync from DB to preserve user input
   useEffect(() => {
     const initialValues: Record<string, string> = {};
     allVariables.forEach(v => {
@@ -151,8 +151,11 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
         initialValues[v.name] = v.value;
       }
     });
-    setVariables(initialValues);
-  }, [savedVariablesData]); // Re-run when saved variables change
+    // Only set if variables state is empty (first load)
+    if (Object.keys(variables).length === 0) {
+      setVariables(initialValues);
+    }
+  }, [savedVariablesData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleValueChange = (varName: string, value: string) => {
     setVariables(prev => ({ ...prev, [varName]: value }));
@@ -230,11 +233,24 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
       // 3. Update nodes
       setNodes(updatedNodes);
       
-      // 4. DON'T auto-save workflow to prevent race conditions with locked variables
-      // User will save manually via Save button
-
-      toast.success(`✅ Saved to database & applied to ${variable.usedInBlocks.length} blocks. Click Save to persist.`);
-      refetchVariables(); // Reload to get variable ID for locking
+      // 4. Auto-save workflow to persist the updated node configs
+      try {
+        const canvasJson = JSON.stringify({
+          nodes: updatedNodes,
+          edges: useWorkflowStore.getState().edges,
+        });
+        await api.put(`/api/workflows/${workflowId}`, { canvasJson });
+        toast.success(`✅ Saved & applied to ${variable.usedInBlocks.length} blocks!`);
+      } catch (saveErr) {
+        console.error('Failed to save workflow:', saveErr);
+        toast.error('Variable saved but workflow save failed. Click Save button manually.');
+      }
+      
+      // Reload variables in background to get variable ID for locking
+      // But delay it to avoid resetting the input value
+      setTimeout(() => {
+        refetchVariables();
+      }, 1000);
     } catch (error: any) {
       console.error('Failed to save variable:', error);
       toast.error(error.response?.data?.error || 'Failed to save variable');

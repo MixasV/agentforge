@@ -181,18 +181,28 @@ export class WorkflowActivationService {
       const match = botToken.match(/\{\{env\.(\w+)\}\}/);
       if (match) {
         const varName = match[1];
-        const variable = await prisma.workflowVariable.findFirst({
-          where: {
-            workflowId,
-            key: varName,
-          },
-        });
         
-        if (variable?.value) {
-          botToken = variable.value;
-          logger.info('Bot token loaded from workflow variables', { varName, hasToken: true });
-        } else {
-          logger.error('Variable not found in workflow variables', { varName });
+        // Try to find variable by exact name OR by common aliases
+        const possibleKeys = [varName, 'botToken', 'TELEGRAM_BOT_TOKEN'];
+        
+        let variable = null;
+        for (const key of possibleKeys) {
+          variable = await prisma.workflowVariable.findFirst({
+            where: {
+              workflowId,
+              key,
+            },
+          });
+          
+          if (variable?.value) {
+            logger.info('Bot token loaded from workflow variables', { searchedKey: varName, foundKey: key, hasToken: true });
+            botToken = variable.value;
+            break;
+          }
+        }
+        
+        if (!variable?.value) {
+          logger.error('Variable not found in workflow variables', { searchedKeys: possibleKeys });
           botToken = null;
         }
       } else {
