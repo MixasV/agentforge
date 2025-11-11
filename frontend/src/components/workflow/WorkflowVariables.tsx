@@ -111,17 +111,37 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
           // Create new variable entry
           // IMPORTANT: ALWAYS use value from database if exists, NOT from canvas config
           // Canvas may have placeholders like {{env.XXX}}, but DB has real values
-          const dbValue = savedVar?.value === '********' ? '' : savedVar?.value;
+          
+          // If savedVar has ********, it means value exists but is masked (secret)
+          // In this case, treat it as "value exists" and show empty field
+          // User can re-enter value if needed, or we keep the existing one
+          const dbValue = savedVar?.value;
+          const hasDbValue = savedVar?.id && dbValue; // Has DB record
           const configValue = node.data.config?.[varName];
           
-          // Priority: DB value FIRST, ignore canvas if it's a placeholder
+          // Debug logging
+          if (varName === 'botToken' || varName === 'TELEGRAM_BOT_TOKEN') {
+            console.log('🔍 Extracting variable:', {
+              varName,
+              dbValue: dbValue?.substring(0, 20),
+              configValue: configValue?.substring(0, 30),
+              savedVarId: savedVar?.id,
+              hasDbValue,
+            });
+          }
+          
+          // Priority logic:
+          // 1. If DB has real value (not masked), use it
+          // 2. If DB value is ******** (masked secret), show empty but mark as "has value"
+          // 3. Otherwise use canvas value if it's not a placeholder
           let finalValue = '';
-          if (dbValue) {
+          if (hasDbValue && dbValue !== '********') {
             finalValue = dbValue;
-          } else if (configValue && !configValue.includes('{{')) {
-            // Only use canvas value if it's NOT a placeholder
+          } else if (!hasDbValue && configValue && !configValue.includes('{{')) {
+            // Only use canvas value if NO DB record and it's NOT a placeholder
             finalValue = configValue;
           }
+          // If dbValue is ********, finalValue stays empty but variable.id exists
           
           varMap.set(varName, {
             id: savedVar?.id,
@@ -334,8 +354,12 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
               <div className="flex items-center gap-1 mb-2">
                 <input
                   type={variable.isSecret && !showValues[variable.name] ? 'password' : 'text'}
-                  placeholder={variable.value || 'Enter value...'}
-                  value={variables[variable.name] !== undefined ? variables[variable.name] : (variable.value || '')}
+                  placeholder={
+                    variable.id && !variable.value ? 'Value saved (hidden)' :
+                    variable.value ? variable.value : 
+                    'Enter value...'
+                  }
+                  value={variables[variable.name] !== undefined ? variables[variable.name] : (variable.value === '********' ? '' : variable.value || '')}
                   onChange={(e) => handleValueChange(variable.name, e.target.value)}
                   disabled={variable.isLocked && !!variable.value}
                   className={`flex-1 px-2 py-1 text-xs bg-dark-card border border-dark-border rounded text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple ${
