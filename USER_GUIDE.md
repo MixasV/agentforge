@@ -8,10 +8,14 @@ Welcome to AgentForge! This guide will help you create your first automated work
 
 1. [Getting Started](#getting-started)
 2. [Creating Your First Workflow](#creating-your-first-workflow)
-3. [Understanding Blocks](#understanding-blocks)
-4. [Managing Credits](#managing-credits)
-5. [Deploying to Telegram](#deploying-to-telegram)
-6. [Best Practices](#best-practices)
+3. [Using AI Assistant](#using-ai-assistant)
+4. [Understanding Blocks](#understanding-blocks)
+5. [Environment Variables](#environment-variables)
+6. [AI Agent Block](#ai-agent-block)
+7. [Workflow Activation & Triggers](#workflow-activation--triggers)
+8. [Managing Credits](#managing-credits)
+9. [Deploying to Telegram](#deploying-to-telegram)
+10. [Best Practices](#best-practices)
 
 ---
 
@@ -95,7 +99,84 @@ Watch the execution log at bottom:
 
 ---
 
+## Using AI Assistant
+
+AgentForge has a built-in AI Assistant that can **generate workflows from text descriptions**!
+
+### Step 1: Open AI Assistant
+
+1. Open any workflow editor
+2. Click the **"AI Assistant"** button (✨ sparkles icon) in top-right
+3. Panel slides in from the right
+
+### Step 2: Describe Your Workflow
+
+Type what you want to build, for example:
+
+```
+Create a Telegram bot that:
+1. Receives a token address
+2. Gets the token price from Jupiter
+3. Sends the price back to the user
+```
+
+### Step 3: Review Generated Workflow
+
+The AI will:
+- Generate nodes and connections
+- Show explanation of how it works
+- Provide security notes
+- Suggest next steps
+
+### Step 4: Apply or Reject
+
+- Click **"Apply to Canvas"** to use the workflow
+- Click **"Reject"** to try again
+- Previous versions saved in history
+
+### Tips for Better Results
+
+✅ **Good prompts:**
+- "Create a bot that sends SOL price every hour"
+- "Build a workflow that filters tokens by market cap > 1M and sends to Telegram"
+- "Make a trading bot that swaps SOL to USDC when price drops"
+
+❌ **Avoid:**
+- Too vague: "Make a bot"
+- Missing details: "Send message" (where? when?)
+
+---
+
 ## Understanding Blocks
+
+### Trigger Blocks (Purple 🟣)
+
+Start workflows automatically:
+
+**Telegram Trigger**
+- Triggers when bot receives message
+- Cost: 0 credits
+- Outputs: messageText, chatId, userId, botToken
+- Must activate workflow to use
+
+**Webhook Trigger**
+- Triggers on HTTP POST request
+- Cost: 0 credits
+- Outputs: body, query, headers, webhookUrl
+- Get unique URL when activated
+
+**Schedule Trigger**
+- Triggers on cron schedule
+- Cost: 0 credits
+- Example: `0 * * * *` (every hour)
+- Configure in block settings
+
+**Manual Trigger**
+- Triggers when you click "Run"
+- Cost: 0 credits
+- Good for testing workflows
+
+---
 
 ### Data Blocks (Blue 🔵)
 
@@ -125,6 +206,14 @@ Fetch data from external APIs:
 - Input: accountAddress
 - Output: account data
 
+### AI Blocks (Cyan 🔷)
+
+**AI Agent Block**
+- Autonomous agent that can use other blocks as tools
+- Cost: 30 credits (max, actual depends on usage)
+- Can make decisions and chain multiple actions
+- See [AI Agent Block](#ai-agent-block) section below
+
 ### Logic Blocks (Yellow 🟡)
 
 Process and transform data:
@@ -147,6 +236,212 @@ Process and transform data:
 ### Action Blocks (Red 🔴)
 
 Execute actions:
+
+**Send Telegram Message**
+- Send text message to Telegram
+- Cost: 0 credits
+- Inputs: chatId, text, botToken
+- Use with Telegram Trigger
+
+**Send Telegram Inline Keyboard**
+- Send message with buttons
+- Cost: 0 credits
+- Inputs: chatId, text, keyboard (JSON)
+
+**Solana Swap**
+- Execute token swap on Solana
+- Cost: 5 credits
+- Inputs: routePlan, slippageBps
+- Returns transaction signature
+
+---
+
+## Environment Variables
+
+Store sensitive data like bot tokens and API keys securely.
+
+### Creating Variables
+
+1. Open workflow editor
+2. Click **"Variables"** tab (below canvas)
+3. Click **"+ Add Variable"**
+4. Fill in:
+   - **Key:** `TELEGRAM_BOT_TOKEN`
+   - **Value:** Your actual bot token
+   - **Description:** "Bot token from @BotFather"
+   - **Is Secret:** ✅ (masks value in UI)
+5. Click **"Save"**
+
+### Using Variables in Blocks
+
+Instead of pasting token in each block:
+
+❌ **Don't do this:**
+```
+botToken: "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
+```
+
+✅ **Do this:**
+```
+botToken: {{env.TELEGRAM_BOT_TOKEN}}
+```
+
+### Apply to All Blocks
+
+1. Enter value in Variables panel
+2. Click **"Apply to All Blocks"**
+3. All blocks using that variable will be updated
+4. Click **"Save"** workflow to persist
+
+### Lock Variables
+
+Prevent accidental changes:
+
+1. Save variable first (must have ID)
+2. Click **🔓 Lock** button
+3. Variable becomes 🔒 Locked
+4. Can't be changed until unlocked
+
+**Use locked variables for:**
+- Production bot tokens
+- API keys
+- Critical configuration
+
+---
+
+## AI Agent Block
+
+The AI Agent is an **autonomous block** that can use other blocks as tools, like n8n AI Agent.
+
+### How It Works
+
+1. You give the AI Agent a task (userMessage)
+2. AI decides which tools/blocks to use
+3. AI executes tools in sequence
+4. AI generates final response
+
+### Visual Tool Connections
+
+Connect blocks to AI Agent to make them available as tools:
+
+1. Add AI Agent block to canvas
+2. Add other blocks (e.g., "Send Telegram", "Jupiter Quote")
+3. Connect blocks to AI Agent's **tool input** (left side)
+4. AI can now use those blocks!
+
+### Configuration
+
+**Inputs:**
+- **userMessage:** Task description (e.g., "Get SOL price and send to user")
+- **systemMessage:** Guide AI behavior (e.g., "You are a trading assistant")
+- **chatId:** Telegram chat ID (auto-filled from trigger)
+- **botToken:** Bot token (use {{env.TELEGRAM_BOT_TOKEN}})
+- **enabledTools:** Comma-separated list if not using visual connections
+- **model:** Choose AI model (llama-3.3-70b, gpt-oss-120b, llama-3.1-8b)
+- **maxIterations:** Max tool calls (default: 5)
+
+**Outputs:**
+- **response:** Final AI response
+- **toolsUsed:** List of tools that were called
+- **conversationHistory:** Full conversation with tool calls
+- **success:** True if completed successfully
+
+### Example Workflow
+
+```
+[Telegram Trigger] → [AI Agent]
+                         ↓ (tool connections)
+                    [Send Telegram]
+                    [Jupiter Quote]
+                    [Pump.fun Data]
+```
+
+When user sends "What's the price of SOL?":
+1. AI Agent receives message
+2. Decides to call Jupiter Quote tool
+3. Gets price data
+4. Decides to call Send Telegram tool
+5. Sends price to user
+
+### Tips
+
+- Connect 2-5 tools max for best results
+- Use clear systemMessage to guide behavior
+- Test with Manual Trigger first
+- Monitor credits usage (AI Agent uses 30 credits max per run)
+
+---
+
+## Workflow Activation & Triggers
+
+Turn your workflows into **always-on bots** with one click!
+
+### How Activation Works
+
+1. Build workflow with trigger block (Telegram, Webhook, Schedule)
+2. Click **"Activate"** toggle in workflow editor
+3. AgentForge registers your triggers automatically
+4. Workflow runs when trigger fires
+
+### Telegram Trigger Activation
+
+**Requirements:**
+1. Telegram bot token (get from @BotFather)
+2. Save token in Variables as `TELEGRAM_BOT_TOKEN`
+3. Add Telegram Trigger block to workflow
+
+**Activation:**
+1. Click **"Activate"** toggle
+2. AgentForge registers webhook with Telegram API
+3. Your bot starts receiving messages
+4. Workflow runs on every message
+
+**Deactivation:**
+1. Click **"Activate"** toggle again
+2. Webhook unregistered
+3. Bot stops responding
+
+### Webhook Trigger Activation
+
+**Activation:**
+1. Add Webhook Trigger block
+2. Click **"Activate"**
+3. Get unique webhook URL: `https://api.agentforge.app/webhooks/generic/{workflowId}`
+4. Share URL with services you want to integrate
+
+**Usage:**
+Send POST request to webhook URL:
+```bash
+curl -X POST https://api.agentforge.app/webhooks/generic/abc123 \
+  -H "Content-Type: application/json" \
+  -d '{"price": 100, "token": "SOL"}'
+```
+
+Workflow receives data in `{{webhook_trigger.body}}`
+
+### Schedule Trigger Activation
+
+**Configuration:**
+1. Add Schedule Trigger block
+2. Set cron schedule:
+   - `0 * * * *` = Every hour
+   - `*/5 * * * *` = Every 5 minutes
+   - `0 9 * * 1` = Every Monday at 9am
+3. Click **"Activate"**
+4. Workflow runs on schedule
+
+**Testing:**
+- Use https://crontab.guru to test cron expressions
+- Start with longer intervals while testing (avoid rapid credits usage)
+
+### Activation Status
+
+Visual indicators:
+- 🟢 **Green "Active"** = Workflow is listening
+- 🔴 **Gray "Inactive"** = Workflow is off
+- ⚠️ **Yellow "Error"** = Activation failed (check variables)
+
+---
 
 **Send Telegram Message Block**
 - Send message via Telegram bot

@@ -3,6 +3,9 @@
 **Base URL:** `http://localhost:3001` (development)  
 **Production:** `https://api.agentforge.app`
 
+**Last Updated:** November 11, 2025  
+**API Version:** 1.5
+
 All API requests require JSON content type unless specified.
 
 ---
@@ -197,6 +200,438 @@ Get transaction history.
     "totalPages": 1
   }
 }
+```
+
+---
+
+## Workflow Variables
+
+### GET /api/workflows/:id/variables
+
+Get workflow environment variables.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "variables": [
+      {
+        "id": "uuid",
+        "workflowId": "uuid",
+        "key": "TELEGRAM_BOT_TOKEN",
+        "value": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+        "description": "Telegram Bot Token from @BotFather",
+        "isSecret": true,
+        "isLocked": false,
+        "createdAt": "2025-11-10T12:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### POST /api/workflows/:id/variables
+
+Create or update workflow variable.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Request:**
+```json
+{
+  "key": "TELEGRAM_BOT_TOKEN",
+  "value": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+  "description": "Bot token from @BotFather",
+  "isSecret": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "workflowId": "uuid",
+    "key": "TELEGRAM_BOT_TOKEN",
+    "value": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+    "isSecret": true,
+    "isLocked": false
+  }
+}
+```
+
+---
+
+### PATCH /api/workflows/:id/variables/:variableId/lock
+
+Lock or unlock a variable to prevent accidental changes.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Request:**
+```json
+{
+  "isLocked": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "isLocked": true
+  }
+}
+```
+
+---
+
+### DELETE /api/workflows/:id/variables/:variableId
+
+Delete workflow variable.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "success": true
+  }
+}
+```
+
+---
+
+## Workflow Activation
+
+### POST /api/workflows/:id/activate
+
+Activate workflow and register triggers (Telegram, Webhook, Schedule).
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workflowId": "uuid",
+    "isActive": true,
+    "activatedAt": "2025-11-10T12:00:00Z",
+    "triggersRegistered": 2,
+    "triggers": [
+      {
+        "type": "telegram",
+        "config": {
+          "webhookUrl": "https://api.agentforge.app/webhooks/telegram/uuid",
+          "botUsername": "my_bot"
+        }
+      },
+      {
+        "type": "webhook",
+        "config": {
+          "webhookUrl": "https://api.agentforge.app/webhooks/generic/uuid"
+        }
+      }
+    ]
+  }
+}
+```
+
+---
+
+### POST /api/workflows/:id/deactivate
+
+Deactivate workflow and unregister all triggers.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workflowId": "uuid",
+    "isActive": false,
+    "triggersUnregistered": 2
+  }
+}
+```
+
+---
+
+## AI Assistant
+
+### GET /api/workflows/:id/chat
+
+Get AI Assistant chat history for workflow.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "messages": [
+      {
+        "id": "uuid",
+        "workflowId": "uuid",
+        "role": "user",
+        "content": "Create a Telegram bot that sends SOL price",
+        "createdAt": "2025-11-10T12:00:00Z"
+      },
+      {
+        "id": "uuid",
+        "role": "assistant",
+        "content": "I'll create a workflow with...",
+        "metadata": {
+          "workflow": {
+            "nodes": [...],
+            "edges": [...]
+          }
+        },
+        "createdAt": "2025-11-10T12:00:30Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### POST /api/workflows/:id/chat
+
+Send message to AI Assistant to generate workflow.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Request:**
+```json
+{
+  "message": "Create a Telegram bot that sends SOL price every hour",
+  "currentWorkflow": {
+    "nodes": [],
+    "edges": []
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workflow": {
+      "nodes": [
+        {
+          "id": "node_1",
+          "type": "schedule_trigger",
+          "data": {
+            "type": "schedule_trigger",
+            "config": {
+              "schedule": "0 * * * *"
+            }
+          }
+        },
+        {
+          "id": "node_2",
+          "type": "jupiter_token_info",
+          "data": {...}
+        }
+      ],
+      "edges": [...]
+    },
+    "explanation": "This workflow runs every hour...",
+    "securityNotes": ["Never expose bot token", "..."],
+    "nextSteps": ["Test the workflow", "..."]
+  }
+}
+```
+
+---
+
+### DELETE /api/workflows/:id/chat
+
+Clear AI Assistant chat history for workflow.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "deleted": 15
+  }
+}
+```
+
+---
+
+## Session Keys
+
+### GET /api/session/config/:sessionId
+
+Get session key request configuration (for Telegram authorization).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "sessionId": "uuid",
+    "userId": "telegram_123456",
+    "validUntil": "2025-11-10T18:00:00Z",
+    "maxTransactions": 100,
+    "maxAmountPerTx": 1000000000,
+    "allowedPrograms": ["JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB"],
+    "status": "pending_auth"
+  }
+}
+```
+
+---
+
+### POST /api/session/authorize
+
+Complete session key authorization after user approval.
+
+**Request:**
+```json
+{
+  "sessionId": "uuid",
+  "approved": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "sessionKeyPublic": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "expiresAt": "2025-11-10T18:00:00Z",
+    "maxTransactions": 100
+  }
+}
+```
+
+---
+
+### POST /api/session/revoke
+
+Revoke user session key.
+
+**Request:**
+```json
+{
+  "sessionId": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "revoked": true,
+    "revokedAt": "2025-11-10T14:00:00Z"
+  }
+}
+```
+
+---
+
+### GET /api/session/info/:userId
+
+Get user session information.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "sessions": [
+      {
+        "id": "uuid",
+        "sessionKeyPublic": "7xKXtg...",
+        "isActive": true,
+        "expiresAt": "2025-11-10T18:00:00Z",
+        "transactionsUsed": 5,
+        "maxTransactions": 100
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Webhooks
+
+### POST /webhooks/telegram/:workflowId
+
+Webhook endpoint for Telegram bot updates (auto-registered on activation).
+
+**Request:** Telegram Update object
+
+**Response:**
+```json
+{
+  "ok": true
+}
+```
+
+---
+
+### POST /webhooks/generic/:workflowId
+
+Generic webhook endpoint for manual integrations.
+
+**Request:** Any JSON payload
+
+**Response:**
+```json
+{
+  "success": true,
+  "executionId": "uuid"
+}
+```
+
+---
+
+## Execution Streaming
+
+### GET /api/executions/:executionId/stream
+
+Server-Sent Events stream for real-time execution updates.
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Events:**
+```
+event: nodeStarted
+data: {"executionId":"uuid","nodeId":"node_1","nodeType":"telegram_trigger","timestamp":"2025-11-10T12:00:00Z"}
+
+event: nodeCompleted
+data: {"executionId":"uuid","nodeId":"node_1","output":{...},"duration":123}
+
+event: nodeFailed
+data: {"executionId":"uuid","nodeId":"node_2","error":"Insufficient balance"}
+
+event: executionCompleted
+data: {"executionId":"uuid","status":"success","duration":1234,"creditsUsed":15}
 ```
 
 ---

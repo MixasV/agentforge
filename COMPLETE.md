@@ -1,8 +1,8 @@
 # 🎉 AgentForge - ПОЛНОСТЬЮ ЗАВЕРШЁН
 
 **Статус:** 100% COMPLETE  
-**Дата:** 6 ноября 2025  
-**Версия:** MVP 1.0
+**Дата:** 11 ноября 2025  
+**Версия:** MVP 1.5
 
 ---
 
@@ -10,21 +10,31 @@
 
 ### Backend
 - ✅ Express.js + TypeScript + Prisma + PostgreSQL
-- ✅ 19 API endpoints (полная REST API)
-- ✅ Аутентификация (Phantom + Telegram)
-- ✅ Система кредитов + x402 prepayment
-- ✅ Workflow Engine (топологическая сортировка)
-- ✅ 10 блоков интеграций
+- ✅ **40+ API endpoints** (полная REST API)
+- ✅ Аутентификация (Phantom + Telegram + CDP Wallets)
+- ✅ Система кредитов + x402 prepayment + Phantom transaction
+- ✅ **Workflow Engine** (топологическая сортировка + real-time execution)
+- ✅ **27+ блоков**: триггеры, Solana, Telegram, AI Agent, логика
+- ✅ **Workflow Activation System** (Telegram + Webhook триггеры)
+- ✅ **Environment Variables API** с lock/unlock механизмом
+- ✅ **AI Assistant API** для генерации workflows
+- ✅ **Session Keys API** для безопасных транзакций
+- ✅ **Execution Streaming** (Server-Sent Events)
 - ✅ Обработка ошибок, логирование, валидация
 
 ### Frontend
 - ✅ React + TypeScript + Vite + TailwindCSS
-- ✅ 7 страниц: Login, Dashboard, Workflows, WorkflowEditor, Billing, Blocks, Settings
-- ✅ Workflow Canvas (React Flow) с drag-and-drop
-- ✅ Node Palette, Inspector, Execution Log
-- ✅ Billing Dashboard с x402 UI
-- ✅ Blocks Marketplace
-- ✅ Settings (профиль, безопасность, уведомления)
+- ✅ **8 страниц**: Login, Dashboard, Workflows, WorkflowEditor, Billing, Blocks, Settings, SessionAuth
+- ✅ **Workflow Canvas (React Flow)** с drag-and-drop + n8n-style UI
+- ✅ **AI Assistant Panel** - генерация workflows из текста
+- ✅ **Environment Variables Manager** - UI для переменных с lock/unlock
+- ✅ **Activation Toggle** - one-click deployment для Telegram/Webhook
+- ✅ **Custom Node Component** с execution states (running/success/error)
+- ✅ **Node Inspector Modal** с динамической конфигурацией
+- ✅ **Execution Log** с real-time updates через SSE
+- ✅ **Billing Dashboard** с Phantom transaction integration
+- ✅ **Blocks Marketplace** с фильтрами по категориям
+- ✅ **Settings** (профиль, Telegram bot, уведомления)
 
 ### Документация
 - ✅ README.md - полный обзор
@@ -97,12 +107,13 @@ AgentForge/
 
 ## 📊 Статистика
 
-- **Backend:** 40+ файлов, ~4500 строк кода
-- **Frontend:** 30+ файлов, ~4000 строк кода
-- **Документация:** 8 файлов, 40+ страниц
-- **API Endpoints:** 19
-- **Страниц UI:** 7
-- **Блоков:** 10
+- **Backend:** 60+ файлов, ~8000 строк кода
+- **Frontend:** 45+ файлов, ~6500 строк кода
+- **Документация:** 7 файлов, 50+ страниц
+- **API Endpoints:** 40+
+- **Страниц UI:** 8
+- **Блоков:** 27+ (триггеры, data, action, logic, AI)
+- **База данных:** 16 таблиц (Prisma schema)
 - **TypeScript:** 100% strict mode
 - **Тесты:** Ready for implementation
 - **GitHub Actions:** CI/CD configured
@@ -144,37 +155,82 @@ cd frontend && npm install && npm run dev
 
 ## 🔑 Ключевые Фичи
 
-### 1. Workflow Canvas
+### 1. Workflow Canvas (n8n-style)
 - Drag-and-drop интерфейс
-- 10 готовых блоков
-- Visual configuration
-- Real-time execution logs
+- **27+ готовых блоков** (триггеры, Solana, Telegram, AI, логика)
+- **Visual tool connections** для AI Agent
+- **Real-time execution tracking** с цветными индикаторами
+- **Dynamic configuration** через Inspector
 - Keyboard shortcuts (Ctrl+S, Ctrl+Enter, Delete)
 - Export/Import JSON
 
-### 2. x402 Prepayment System
-- Одна предоплата → множество вызовов
+### 2. AI Agent Block (Autonomous)
+- Может использовать **любой блок как инструмент**
+- Visual tool connections через edges
+- Multi-step reasoning с LLM
+- Groq API integration (llama-3.3-70b, gpt-oss-120b, llama-3.1-8b)
+- Cascade fallback для надёжности
+
+### 3. AI Assistant Panel
+- Генерация workflows из текстового описания
+- Per-workflow chat history (localStorage persistence)
+- Version history с preview/restore
+- Apply/Reject generated workflows
+- Knowledge base о всех блоках
+
+### 4. Workflow Activation System
+- **One-click deployment** через Activation Toggle
+- **Telegram Trigger** - автоматическая регистрация webhook
+- **Webhook Trigger** - генерация уникального URL
+- **Schedule Trigger** - cron-based execution
+- **Manual Trigger** - run by button click
+- Auto-start/stop при activate/deactivate
+
+### 5. Environment Variables
+- **Secure storage** для bot tokens, API keys
+- **Lock/Unlock mechanism** - защита от случайных изменений
+- **Apply to All Blocks** - один клик для обновления всех блоков
+- **Secret fields** с masked UI (********)
+- Validation: запрет {{references}} в значениях
+
+### 6. Session Keys (Security)
+- **Безопасные транзакции** без приватных ключей
+- Telegram-based authorization flow
+- Time-limited sessions (expiresAt)
+- Transaction limits (maxTransactions, maxAmountPerTx)
+- Program whitelist (allowedPrograms)
+
+### 7. x402 Prepayment System
+- Hybrid model: prepayment → instant credits
+- **Phantom integration** - real Solana transactions
 - Мгновенное списание кредитов
 - История транзакций
 - Статистика использования
 
-### 3. No-Code Philosophy
-- Визуальное создание workflows
-- Без написания кода
-- Pre-built блоки для Solana
-- Готов к использованию
+### 8. Real-time Execution
+- **Server-Sent Events (SSE)** для live updates
+- Visual node states (pending/running/success/error)
+- Execution log с timestamps
+- Error messages в UI
+- Credits usage tracking
 
-### 4. Settings & Profile
-- Информация профиля
-- Управление wallet
+### 9. Blocks Marketplace
+- 27+ блоков в 5 категориях:
+  - **Triggers**: Telegram, Webhook, Schedule, Manual
+  - **Data**: Jupiter, Pump.fun, Helius, Solana Account
+  - **Action**: Solana Swap, Telegram Send, Session Keys
+  - **Logic**: Filter, Map, Conditional
+  - **AI**: AI Agent (autonomous tool calling)
+- Фильтрация по категориям
+- Детальная информация о каждом блоке
+- Ready for community contributions
+
+### 10. Settings & Profile
+- Информация профиля (wallet, credits)
+- **Telegram Bot настройка** (token, username)
 - Настройки уведомлений
 - Security settings
-
-### 5. Blocks Marketplace
-- Просмотр всех доступных блоков
-- Фильтрация по категориям
-- Детальная информация о блоках
-- Ready for community contributions
+- Auto-recharge configuration
 
 ---
 

@@ -28,15 +28,19 @@ AgentForge is the first **no-code workflow automation platform** designed specif
 
 ## Features
 
-- ✅ 10 pre-built blocks (Jupiter, Pump.fun, Helius, LLM, etc.)
-- ✅ Drag-and-drop workflow builder
-- ✅ x402 prepayment system (Coinbase facilitator)
+- ✅ **27+ pre-built blocks** (Jupiter, Pump.fun, Helius, Telegram, AI Agent, etc.)
+- ✅ **Drag-and-drop workflow builder** with n8n-style canvas
+- ✅ **AI Agent Block** - Autonomous agent that can use ANY block as a tool
+- ✅ **AI Assistant** - Generate workflows from natural language prompts
+- ✅ **Workflow Activation System** - One-click Telegram/Webhook deployment
+- ✅ **Environment Variables** - Secure configuration with lock/unlock
+- ✅ **x402 prepayment system** (Coinbase facilitator)
 - ✅ **CDP Embedded Wallets** - Email login without seed phrases
 - ✅ **Phantom CASH** token support - New stablecoin payments
-- ✅ Telegram bot deployment
-- ✅ Real-time execution logs
-- ✅ Credits-based API charging
-- ✅ 100% open source (MIT)
+- ✅ **Session Keys** - Execute trades without exposing private keys
+- ✅ **Real-time execution tracking** with visual feedback
+- ✅ **Credits-based API charging**
+- ✅ **100% open source (MIT)**
 
 ## Tech Stack
 
@@ -196,11 +200,15 @@ We follow the [Dark Research open source strategy](https://www.darkresearch.ai/b
 
 ## Roadmap
 
-### Phase 1: MVP (Current)
-- ✅ Basic workflow builder
+### Phase 1: MVP (✅ COMPLETE)
+- ✅ n8n-style workflow builder with 27+ blocks
+- ✅ AI Agent with visual tool connections
+- ✅ AI Assistant for workflow generation
+- ✅ Workflow activation system (Telegram + Webhook triggers)
+- ✅ Environment variables with security features
 - ✅ x402 prepayment system
-- ✅ Telegram deployment
-- ✅ 10 core blocks
+- ✅ Session keys for secure trading
+- ✅ Real-time execution tracking
 
 ### Phase 2: Enhanced Integrations
 - 🔲 Browser extensions
