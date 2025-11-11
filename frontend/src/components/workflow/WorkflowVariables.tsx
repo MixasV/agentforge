@@ -109,10 +109,13 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
           }
         } else {
           // Create new variable entry
-          // IMPORTANT: For locked variables, ALWAYS use value from database, NOT from canvas config
-          const configValue = node.data.config?.[varName];
+          // IMPORTANT: ALWAYS use value from database if exists, NOT from canvas config
+          // Canvas may have placeholders like {{env.XXX}}, but DB has real values
           const dbValue = savedVar?.value === '********' ? '' : savedVar?.value;
-          const finalValue = (savedVar?.isLocked && dbValue) ? dbValue : (configValue || dbValue || '');
+          const configValue = node.data.config?.[varName];
+          
+          // Priority: DB value > canvas config value (only if no DB value)
+          const finalValue = dbValue || configValue || '';
           
           varMap.set(varName, {
             id: savedVar?.id,
