@@ -348,8 +348,32 @@ export const aiAgentBlock: BlockDefinition = {
           toolsUsed: toolsUsed.length 
         });
 
+        const finalResponse = response.message.content || '';
+
+        // Auto-send response to Telegram if we have chatId and didn't use send_telegram tool
+        const usedSendTelegram = toolsUsed.includes('send_telegram');
+        const hasChatId = inputs.chatId || context.$context?.chatId;
+        const hasBotToken = inputs.botToken || context.$context?.botToken;
+
+        if (!usedSendTelegram && hasChatId && hasBotToken && finalResponse) {
+          logger.info('Auto-sending final response to Telegram', { chatId: hasChatId });
+          
+          try {
+            const sendTelegramTool = tools.find(t => t.name === 'send_telegram');
+            if (sendTelegramTool) {
+              await sendTelegramTool.execute({
+                chatId: hasChatId,
+                message: finalResponse,
+              }, context);
+              logger.info('Auto-sent response to Telegram successfully');
+            }
+          } catch (error) {
+            logger.error('Failed to auto-send response to Telegram', error);
+          }
+        }
+
         return {
-          response: response.message.content || '',
+          response: finalResponse,
           toolsUsed,
           conversationHistory: messages,
           success: true,
