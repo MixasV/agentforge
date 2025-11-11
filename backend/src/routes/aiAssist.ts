@@ -228,9 +228,23 @@ Extracted entities from user message:
       - Verdict format: **Verdict:** ✅/⚠️/❌ [Safe/Risky/Scam]
       - Reasoning on new line after verdict
    4. Give a VERDICT: ✅ Safe / ⚠️ Risky / ❌ Scam
-   5. Use send_telegram tool to send formatted analysis
+   5. **CRITICAL**: ALWAYS use send_telegram tool to send your response!
+      - Don't just analyze and stop
+      - Call send_telegram with your formatted analysis
+      - If tool not available, response will auto-send (but prefer explicit call)
    
    For /start: Ask user to provide token address"
+   
+   H. RESPONSE HANDLING RULES:
+      ⚠️ CRITICAL: AI Agent responses must be sent back to user!
+      
+      - If AI Agent has send_telegram as tool → IT MUST CALL IT for every response
+      - If AI Agent gets error from tool → IT MUST SEND ERROR MESSAGE via send_telegram
+      - If user asks invalid question → AI AGENT MUST REPLY via send_telegram
+      - System has auto-send fallback BUT agent should call send_telegram explicitly
+      
+      BAD FLOW: User message → AI Agent analyzes → Returns response (user sees nothing)
+      GOOD FLOW: User message → AI Agent analyzes → Calls send_telegram → User gets message
    
 2. When trading is involved, ALWAYS use Session Keys blocks:
    - authorize_session_key
