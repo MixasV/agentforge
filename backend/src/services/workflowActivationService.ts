@@ -176,7 +176,8 @@ export class WorkflowActivationService {
       throw new Error('Please provide bot token in Telegram Trigger block or configure it in Settings');
     }
 
-    const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/webhook/telegram/${workflowId}`;
+    // Use /webhooks (plural) to match API documentation
+    const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/webhooks/telegram/${workflowId}`;
 
     const result = await telegramService.setWebhook(botToken, webhookUrl);
 
@@ -226,7 +227,8 @@ export class WorkflowActivationService {
   }
 
   private async registerWebhookTrigger(workflowId: string, trigger: TriggerNode): Promise<void> {
-    const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/webhook/generic/${workflowId}`;
+    // Use /webhooks (plural) to match API documentation
+    const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/webhooks/generic/${workflowId}`;
 
     await prisma.triggerRegistration.create({
       data: {

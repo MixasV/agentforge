@@ -54,7 +54,7 @@ app.use('/api/blocks', blocksRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/session', sessionKeysRoutes);
 app.use('/api/ai', aiAssistRoutes);
-app.use('/webhook', webhooksRoutes);
+app.use('/webhooks', webhooksRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
