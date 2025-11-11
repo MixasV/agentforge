@@ -176,15 +176,16 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
   useEffect(() => {
     const initialValues: Record<string, string> = {};
     allVariables.forEach(v => {
-      if (v.value) {
+      // Only initialize if user hasn't entered a value yet
+      if (v.value && !variables[v.name]) {
         initialValues[v.name] = v.value;
       }
     });
-    // Only set if variables state is empty (first load)
-    if (Object.keys(variables).length === 0) {
-      setVariables(initialValues);
+    // Only update values that don't exist in current state
+    if (Object.keys(initialValues).length > 0) {
+      setVariables(prev => ({ ...prev, ...initialValues }));
     }
-  }, [savedVariablesData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allVariables]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleValueChange = (varName: string, value: string) => {
     setVariables(prev => ({ ...prev, [varName]: value }));
@@ -275,11 +276,8 @@ export function WorkflowVariables({ workflowId }: WorkflowVariablesProps) {
         toast.error('Variable saved but workflow save failed. Click Save button manually.');
       }
       
-      // Reload variables in background to get variable ID for locking
-      // But delay it to avoid resetting the input value
-      setTimeout(() => {
-        refetchVariables();
-      }, 1000);
+      // DON'T refetch variables - it causes the input to reset
+      // The variable is already saved, user can see it persist on page reload
     } catch (error: any) {
       console.error('Failed to save variable:', error);
       toast.error(error.response?.data?.error || 'Failed to save variable');
