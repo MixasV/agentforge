@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useCredits } from '@/hooks/useCredits';
-import { api } from '@/services/api';
-import { User, Wallet, Key, Bell, Shield, Trash2, LogOut, MessageCircle, Check, X } from 'lucide-react';
+import { User, Wallet, Key, Bell, Shield, Trash2, LogOut } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -11,76 +10,6 @@ export function Settings() {
   const { user, logout } = useAuth();
   const { balance } = useCredits();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
-  const [telegramBotToken, setTelegramBotToken] = useState('');
-  const [hasToken, setHasToken] = useState(false);
-  const [botUsername, setBotUsername] = useState<string | null>(null);
-  const [webhookStatus, setWebhookStatus] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    loadTelegramSettings();
-  }, []);
-
-  const loadTelegramSettings = async () => {
-    try {
-      const response = await api.get('/api/settings/telegram');
-      if (response.data.success) {
-        setHasToken(response.data.data.hasToken);
-        setBotUsername(response.data.data.botUsername);
-        setWebhookStatus(response.data.data.webhookStatus);
-      }
-    } catch (error: any) {
-      console.error('Failed to load Telegram settings', error);
-    }
-  };
-
-  const handleSaveTelegramToken = async () => {
-    if (!telegramBotToken.trim()) {
-      toast.error('Please enter a bot token');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await api.post('/api/settings/telegram', {
-        botToken: telegramBotToken,
-      });
-
-      if (response.data.success) {
-        toast.success(response.data.data.message);
-        setBotUsername(response.data.data.botUsername);
-        setHasToken(true);
-        setTelegramBotToken('');
-        await loadTelegramSettings();
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to save bot token');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteTelegramToken = async () => {
-    if (!confirm('Are you sure you want to remove Telegram bot token?')) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await api.delete('/api/settings/telegram');
-      if (response.data.success) {
-        toast.success(response.data.message);
-        setHasToken(false);
-        setBotUsername(null);
-        setWebhookStatus(null);
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to delete bot token');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDeleteAccount = () => {
     toast.error('Account deletion not implemented yet');
@@ -169,83 +98,6 @@ export function Settings() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Telegram Bot Integration */}
-          <div className="bg-dark-card rounded-xl p-6 border border-dark-border">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-blue-400/10 rounded-lg">
-                <MessageCircle size={24} className="text-blue-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Telegram Bot Integration</h2>
-                <p className="text-sm text-gray-400">Configure your Telegram bot for workflows</p>
-              </div>
-            </div>
-
-            {hasToken ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-green-400/10 border border-green-400/20 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Check size={20} className="text-green-400" />
-                    <span className="font-medium text-green-400">Bot Configured</span>
-                  </div>
-                  <p className="text-sm text-gray-400">
-                    Bot Username: <span className="text-white">@{botUsername}</span>
-                  </p>
-                  {webhookStatus && (
-                    <p className="text-sm text-gray-400 mt-1">
-                      Webhook: <span className={webhookStatus.isSet ? 'text-green-400' : 'text-red-400'}>
-                        {webhookStatus.isSet ? 'Active' : 'Not set'}
-                      </span>
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  onClick={handleDeleteTelegramToken}
-                  disabled={isLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                >
-                  <X size={18} />
-                  Remove Bot Token
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Bot Token (from @BotFather)
-                  </label>
-                  <input
-                    type="password"
-                    value={telegramBotToken}
-                    onChange={(e) => setTelegramBotToken(e.target.value)}
-                    placeholder="123456:ABCDefGhIJKLmnopQRSTuvwxyz"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
-                  />
-                </div>
-
-                <button
-                  onClick={handleSaveTelegramToken}
-                  disabled={isLoading || !telegramBotToken.trim()}
-                  className="px-4 py-2 bg-solana-purple rounded-lg hover:bg-solana-purple/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Saving...' : 'Save Bot Token'}
-                </button>
-
-                <div className="p-4 bg-dark-bg rounded-lg border border-dark-border">
-                  <p className="text-sm font-medium mb-2">How to create a Telegram bot:</p>
-                  <ol className="list-decimal ml-5 text-sm text-gray-400 space-y-1">
-                    <li>Open Telegram and find @BotFather</li>
-                    <li>Send <code className="px-1 py-0.5 bg-dark-card rounded">/newbot</code> command</li>
-                    <li>Follow instructions to create your bot</li>
-                    <li>Copy the bot token and paste it here</li>
-                    <li>Activate a workflow with Telegram Trigger to register webhook</li>
-                  </ol>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Security Section */}

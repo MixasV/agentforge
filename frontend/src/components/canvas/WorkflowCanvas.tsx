@@ -25,9 +25,10 @@ interface WorkflowCanvasProps {
   workflowId?: string;
   onSave?: (nodes: Node[], edges: Edge[]) => void;
   onRun?: () => void;
+  isRunDisabled?: boolean;
 }
 
-export function WorkflowCanvas({ workflowId, onSave, onRun }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ workflowId, onSave, onRun, isRunDisabled = false }: WorkflowCanvasProps) {
   const { nodes: storeNodes, edges: storeEdges, selectedNode, setNodes, setEdges, setSelectedNode } = useWorkflowStore();
   
   const [nodes, setNodesState, onNodesChange] = useNodesState(storeNodes);
@@ -165,27 +166,27 @@ export function WorkflowCanvas({ workflowId, onSave, onRun }: WorkflowCanvasProp
   );
 
   const handleSave = useCallback(() => {
-    // Always get fresh nodes from store to ensure we save the latest state
-    const freshNodes = useWorkflowStore.getState().nodes;
-    const freshEdges = useWorkflowStore.getState().edges;
-    
-    // Sync current UI state to store
+    // Sync current UI state (with positions!) to store
     setNodes(nodes);
     setEdges(edges);
     
-    // Save using fresh nodes from store (in case they were just updated)
+    // Save current nodes/edges (with updated positions from ReactFlow)
     if (onSave) {
-      onSave(freshNodes, freshEdges);
+      onSave(nodes, edges);
       toast.success('Workflow saved');
     }
   }, [nodes, edges, onSave, setNodes, setEdges]);
 
   const handleRun = useCallback(() => {
+    if (isRunDisabled) {
+      toast.error('Insufficient credits! Please add credits to run workflow.');
+      return;
+    }
     if (onRun) {
       onRun();
       toast.success('Workflow execution started');
     }
-  }, [onRun]);
+  }, [onRun, isRunDisabled]);
 
   const handleApplyAIWorkflow = useCallback((workflow: { nodes: any[]; edges: any[] }) => {
     console.log('🎨 Applying AI workflow:', workflow.nodes.length, 'nodes');
@@ -193,21 +194,25 @@ export function WorkflowCanvas({ workflowId, onSave, onRun }: WorkflowCanvasProp
     // Clear preview first
     setPreviewWorkflow(null);
     
-    // Ensure all nodes have proper type for CustomNode rendering
+    // ✅ FULL NORMALIZATION: Ensure all nodes have complete data structure
     const processedNodes = workflow.nodes.map(node => {
       const originalType = node.data?.type || node.type; // preserve block type
       const originalLabel = node.data?.label || node.data?.name || node.label || node.name;
       const originalCategory = node.data?.category || node.category;
-      const originalConfig = node.data?.config || node.config || {};
+      const originalDescription = node.data?.description || '';
+      const originalCreditsCost = node.data?.creditsCost || 0;
+      const originalConfig = node.data?.config || node.config || {}; // ✅ Initialize empty config
+      
       return {
         ...node,
         type: 'customNode',
         data: {
-          ...node.data,
-          type: originalType, // keep block type here
+          type: originalType, // Block type
           label: originalLabel || 'Unknown Block',
           category: originalCategory || 'logic',
-          config: originalConfig,
+          description: originalDescription,
+          creditsCost: originalCreditsCost,
+          config: originalConfig, // ✅ ALWAYS present
         },
       };
     });
@@ -323,8 +328,9 @@ export function WorkflowCanvas({ workflowId, onSave, onRun }: WorkflowCanvasProp
             </button>
             <button
               onClick={handleRun}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-solana-purple to-solana-green text-dark-bg font-semibold rounded-lg hover:opacity-90 transition-opacity"
-              title="Run (Ctrl+Enter)"
+              disabled={isRunDisabled}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-solana-purple to-solana-green text-dark-bg font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              title={isRunDisabled ? "Insufficient credits - please top up" : "Run (Ctrl+Enter)"}
             >
               <Play size={18} />
               Run

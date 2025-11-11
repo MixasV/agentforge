@@ -173,19 +173,37 @@ export class WorkflowActivationService {
       tokenValue: botToken?.substring(0, 20) 
     });
 
-    // If token from trigger is a placeholder like {{env.XXX}}, ignore it
+    // If token from trigger is a placeholder like {{env.XXX}}, fetch from workflow variables
     if (botToken && botToken.includes('{{')) {
-      logger.warn('Bot token is a placeholder, fetching from Settings', { botToken });
-      botToken = null;
+      logger.info('Bot token is a placeholder, fetching from workflow variables', { placeholder: botToken });
+      
+      // Extract variable name from placeholder: {{env.TELEGRAM_BOT_TOKEN}} -> TELEGRAM_BOT_TOKEN
+      const match = botToken.match(/\{\{env\.(\w+)\}\}/);
+      if (match) {
+        const varName = match[1];
+        const variable = await prisma.workflowVariable.findFirst({
+          where: {
+            workflowId,
+            key: varName,
+          },
+        });
+        
+        if (variable?.value) {
+          botToken = variable.value;
+          logger.info('Bot token loaded from workflow variables', { varName, hasToken: true });
+        } else {
+          logger.error('Variable not found in workflow variables', { varName });
+          botToken = null;
+        }
+      } else {
+        botToken = null;
+      }
     }
 
     if (!botToken) {
-      botToken = await userSettingsService.getTelegramBotToken(userId);
-      logger.info('Bot token from Settings', { hasToken: !!botToken });
-    }
-
-    if (!botToken) {
-      throw new Error('Please configure bot token in Settings or add real token to Telegram Trigger block');
+      throw new Error(
+        'Bot token not configured. Go to Variables tab and set TELEGRAM_BOT_TOKEN value, then click "Apply to All Blocks"'
+      );
     }
 
     // Use /webhooks (plural) to match API documentation

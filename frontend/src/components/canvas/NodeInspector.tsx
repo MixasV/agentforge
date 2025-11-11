@@ -25,33 +25,16 @@ export function NodeInspector() {
   useEffect(() => {
     if (selectedNode?.data?.config) {
       setConfig(selectedNode.data.config);
-      
-      // Initialize visible fields: required fields + any fields that have values
-      if (currentBlockDef) {
-        const requiredFields = currentBlockDef.inputs
-          .filter(i => i.required)
-          .map(i => i.name);
-        
-        const fieldsWithValues = Object.keys(selectedNode.data.config).filter(
-          key => selectedNode.data.config[key] !== undefined && 
-                 selectedNode.data.config[key] !== null &&
-                 selectedNode.data.config[key] !== ''
-        );
-        
-        const uniqueFields = Array.from(new Set([...requiredFields, ...fieldsWithValues]));
-        setVisibleFields(uniqueFields);
-      }
     } else {
       setConfig({});
-      // Show only required fields by default
-      if (currentBlockDef) {
-        const requiredFields = currentBlockDef.inputs
-          .filter(i => i.required)
-          .map(i => i.name);
-        setVisibleFields(requiredFields);
-      } else {
-        setVisibleFields([]);
-      }
+    }
+    
+    // Show ALL fields by default (not just required)
+    if (currentBlockDef) {
+      const allFields = currentBlockDef.inputs.map(i => i.name);
+      setVisibleFields(allFields);
+    } else {
+      setVisibleFields([]);
     }
   }, [selectedNode, currentBlockDef]);
 

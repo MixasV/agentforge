@@ -7,6 +7,12 @@ export interface X402PrepaymentRequest {
   userId: string;
   amountUsd: number;
   currency?: 'USDC' | 'CASH';
+  autoRecharge?: {
+    enabled: boolean;
+    threshold: number;
+    amount: number;
+    currency: 'USDC' | 'CASH';
+  };
 }
 
 export interface X402PrepaymentResponse {
@@ -24,10 +30,38 @@ export interface X402PrepaymentResponse {
 export class X402Service {
   async initiatePrepayment(request: X402PrepaymentRequest): Promise<X402PrepaymentResponse> {
     try {
-      const { userId, amountUsd, currency = 'USDC' } = request;
+      const { userId, amountUsd, currency = 'USDC', autoRecharge } = request;
 
-      if (amountUsd < 10 || amountUsd > 1000) {
-        throw new AppError('Amount must be between $10 and $1000', 400);
+      if (amountUsd < 1 || amountUsd > 1000) {
+        throw new AppError('Amount must be between $1 and $1000', 400);
+      }
+
+      // Save auto-recharge settings if provided
+      if (autoRecharge) {
+        await prisma.userSettings.upsert({
+          where: { userId },
+          create: {
+            userId,
+            autoRechargeEnabled: autoRecharge.enabled,
+            autoRechargeThreshold: autoRecharge.threshold,
+            autoRechargeAmount: autoRecharge.amount,
+            autoRechargeCurrency: autoRecharge.currency,
+          },
+          update: {
+            autoRechargeEnabled: autoRecharge.enabled,
+            autoRechargeThreshold: autoRecharge.threshold,
+            autoRechargeAmount: autoRecharge.amount,
+            autoRechargeCurrency: autoRecharge.currency,
+          },
+        });
+        
+        logger.info('Auto-recharge settings saved', {
+          userId,
+          enabled: autoRecharge.enabled,
+          threshold: autoRecharge.threshold,
+          amount: autoRecharge.amount,
+          currency: autoRecharge.currency,
+        });
       }
 
       const creditsIssued = amountUsd * 1000;

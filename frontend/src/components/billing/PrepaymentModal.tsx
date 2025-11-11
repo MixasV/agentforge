@@ -12,23 +12,37 @@ interface PrepaymentModalProps {
 }
 
 const PRESET_AMOUNTS = [
-  { amount: 10, credits: 10000, label: 'Starter' },
-  { amount: 50, credits: 50000, label: 'Popular' },
-  { amount: 100, credits: 100000, label: 'Pro' },
+  { amount: 1, credits: 1000, label: 'Starter' },
+  { amount: 10, credits: 10000, label: 'Popular' },
+  { amount: 50, credits: 50000, label: 'Pro' },
 ];
 
 type Currency = 'USDC' | 'CASH';
 
 export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalProps) {
-  const [selectedAmount, setSelectedAmount] = useState(50);
+  const [selectedAmount, setSelectedAmount] = useState(10);
   const [customAmount, setCustomAmount] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>('USDC');
   const [isProcessing, setIsProcessing] = useState(false);
   const [, setTransactionId] = useState<string | null>(null);
+  
+  // Auto-recharge settings
+  const [autoRechargeEnabled, setAutoRechargeEnabled] = useState(false);
+  const [autoRechargeThreshold, setAutoRechargeThreshold] = useState(999);
+  const [autoRechargeAmount, setAutoRechargeAmount] = useState(10);
 
   const prepayMutation = useMutation({
-    mutationFn: async ({ amountUsd, currency }: { amountUsd: number; currency: Currency }) => {
-      const response = await api.post('/api/credits/prepay', { amountUsd, currency });
+    mutationFn: async (params: { 
+      amountUsd: number; 
+      currency: Currency;
+      autoRecharge?: {
+        enabled: boolean;
+        threshold: number;
+        amount: number;
+        currency: 'USDC' | 'CASH';
+      };
+    }) => {
+      const response = await api.post('/api/credits/prepay', params);
       return response.data;
     },
     onSuccess: (data) => {
@@ -126,19 +140,32 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
   const handlePrepay = () => {
     const amount = customAmount ? parseFloat(customAmount) : selectedAmount;
 
-    if (isNaN(amount) || amount < 10 || amount > 1000) {
-      toast.error('Amount must be between $10 and $1000');
+    if (isNaN(amount) || amount < 1 || amount > 1000) {
+      toast.error('Amount must be between $1 and $1000');
       return;
     }
 
-    prepayMutation.mutate({ amountUsd: amount, currency: selectedCurrency });
+    // Pass auto-recharge settings to backend
+    prepayMutation.mutate({ 
+      amountUsd: amount, 
+      currency: selectedCurrency,
+      autoRecharge: autoRechargeEnabled ? {
+        enabled: true,
+        threshold: autoRechargeThreshold,
+        amount: autoRechargeAmount,
+        currency: selectedCurrency // ✅ USE SAME CURRENCY!
+      } : undefined
+    });
   };
 
   const handleClose = () => {
     if (!isProcessing) {
-      setSelectedAmount(50);
+      setSelectedAmount(10);
       setCustomAmount('');
       setSelectedCurrency('USDC');
+      setAutoRechargeEnabled(false);
+      setAutoRechargeThreshold(999);
+      setAutoRechargeAmount(10);
       setTransactionId(null);
       onClose();
     }
@@ -147,7 +174,14 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isProcessing) {
+          handleClose();
+        }
+      }}
+    >
       <div className="bg-dark-card rounded-xl max-w-2xl w-full border border-dark-border my-8">
         <div className="flex items-center justify-between p-6 border-b border-dark-border">
           <h2 className="text-xl font-semibold">Add Credits via x402</h2>
@@ -262,12 +296,12 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
                     value={customAmount}
                     onChange={(e) => setCustomAmount(e.target.value)}
                     placeholder="Enter custom amount"
-                    min="10"
+                    min="1"
                     max="1000"
                     className="w-full pl-8 pr-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-solana-purple"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Minimum $10, Maximum $1000</p>
+                <p className="text-xs text-gray-500 mt-1">Minimum $1, Maximum $1000</p>
               </div>
 
               <div className="bg-dark-bg rounded-lg p-4 mb-6">
@@ -291,6 +325,77 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
                 </div>
               </div>
 
+              {/* Auto-Recharge Section */}
+              <div className="mb-6 border-t border-dark-border pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Auto-Recharge</h3>
+                    <p className="text-xs text-gray-400">
+                      Automatically top up when balance drops below threshold
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoRechargeEnabled}
+                      onChange={(e) => setAutoRechargeEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-dark-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-solana-purple"></div>
+                  </label>
+                </div>
+
+                {autoRechargeEnabled && (
+                  <div className="space-y-4 bg-dark-bg rounded-lg p-4 border border-dark-border">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Trigger Threshold: {autoRechargeThreshold.toLocaleString()} credits
+                      </label>
+                      <input
+                        type="range"
+                        min="100"
+                        max="10000"
+                        step="100"
+                        value={autoRechargeThreshold}
+                        onChange={(e) => setAutoRechargeThreshold(parseInt(e.target.value))}
+                        className="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-solana-purple"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>100</span>
+                        <span>10,000</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Auto-Recharge Amount: ${autoRechargeAmount}
+                      </label>
+                      <select
+                        value={autoRechargeAmount}
+                        onChange={(e) => setAutoRechargeAmount(parseInt(e.target.value))}
+                        className="w-full px-4 py-2 bg-dark-card border border-dark-border rounded-lg text-white focus:outline-none focus:border-solana-purple"
+                      >
+                        <option value={1}>$1 (1,000 credits)</option>
+                        <option value={5}>$5 (5,000 credits)</option>
+                        <option value={10}>$10 (10,000 credits)</option>
+                        <option value={20}>$20 (20,000 credits)</option>
+                        <option value={50}>$50 (50,000 credits)</option>
+                      </select>
+                    </div>
+
+                    <div className="bg-yellow-400/10 border border-yellow-400/20 rounded-lg p-3">
+                      <p className="text-xs text-yellow-300 flex items-start gap-2">
+                        <span className="mt-0.5">⚠️</span>
+                        <span>
+                          You'll be asked to authorize delegated payments via Phantom wallet.
+                          Funds will be automatically charged when your balance drops below {autoRechargeThreshold.toLocaleString()} credits.
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={handlePrepay}
                 disabled={prepayMutation.isPending}
@@ -302,11 +407,14 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
                 )}
               >
                 <Wallet size={20} />
-                {prepayMutation.isPending ? 'Processing...' : `Proceed with ${selectedCurrency}`}
+                {prepayMutation.isPending ? 'Processing...' : autoRechargeEnabled ? 'Authorize Auto-Recharge' : `Proceed with ${selectedCurrency}`}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
-                Real Solana transaction - Phantom wallet will open for signature.
+                {autoRechargeEnabled 
+                  ? 'Phantom will open twice: once for this payment, once for auto-recharge authorization'
+                  : 'Real Solana transaction - Phantom wallet will open for signature'
+                }
               </p>
             </>
           )}

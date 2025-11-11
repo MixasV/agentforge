@@ -3,7 +3,8 @@ import { jupiterTokenInfoBlock } from './jupiterTokenInfoBlock';
 import { jupiterSwapQuoteBlock } from './jupiterSwapQuoteBlock';
 import { pumpFunDataBlock } from './pumpFunDataBlock';
 import { heliusBalanceBlock } from './heliusBalanceBlock';
-import { llmAnalysisBlock } from './llmAnalysisBlock';
+// DEPRECATED: llmAnalysisBlock replaced by aiAgentBlock (universal AI Agent)
+// import { llmAnalysisBlock } from './llmAnalysisBlock';
 import { aiAgentBlock } from './aiAgentBlock';
 import { solanaAccountInfoBlock } from './solanaAccountInfoBlock';
 import { filterBlock } from './filterBlock';
@@ -61,7 +62,7 @@ export const BLOCKS_REGISTRY: Record<string, BlockDefinition> = {
   send_chat_action: sendChatActionBlock,
   
   // Logic & AI
-  llm_analysis: llmAnalysisBlock,
+  // llm_analysis: llmAnalysisBlock, // DEPRECATED: Use ai_agent instead
   ai_agent: aiAgentBlock,
   filter: filterBlock,
   map: mapBlock,

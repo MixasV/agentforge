@@ -4,18 +4,22 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
 import { ActivationToggle } from '@/components/workflow/ActivationToggle';
+import { PrepaymentModal } from '@/components/billing/PrepaymentModal';
 import { useWorkflowStore } from '@/store/workflowStore';
 import { useExecutionStream } from '@/hooks/useExecutionStream';
+import { useCredits } from '@/hooks/useCredits';
 import { Node, Edge } from 'reactflow';
 import toast from 'react-hot-toast';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Wallet } from 'lucide-react';
 
 export function WorkflowEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setNodes, setEdges, clearWorkflow } = useWorkflowStore();
+  const { balance, refetchBalance } = useCredits();
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
   const [isWaitingForTrigger, setIsWaitingForTrigger] = useState(false);
+  const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
   
   // Connect to execution stream for real-time updates
   useExecutionStream(id || '', currentExecutionId);
@@ -70,6 +74,14 @@ export function WorkflowEditor() {
   };
 
   const handleRun = async () => {
+    // Check credits before running
+    const currentBalance = balance?.balance || 0;
+    if (currentBalance === 0) {
+      toast.error('Insufficient credits! Please top up to run workflow.');
+      setShowPrepaymentModal(true);
+      return;
+    }
+
     // Check if workflow has Telegram Trigger
     const canvas = workflowData?.data?.canvasJson ? JSON.parse(workflowData.data.canvasJson) : { nodes: [] };
     const hasTelegramTrigger = canvas.nodes?.some((node: any) => 
@@ -122,6 +134,15 @@ export function WorkflowEditor() {
     }
   };
 
+  const currentBalance = balance?.balance || 0;
+  const showLowBalanceWarning = currentBalance < 300 && currentBalance > 0;
+  const showZeroBalanceBlock = currentBalance === 0;
+
+  const handlePrepaymentSuccess = () => {
+    refetchBalance();
+    toast.success('Credits added! You can now run workflows.');
+  };
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-dark-bg">
@@ -152,8 +173,60 @@ export function WorkflowEditor() {
         <ActivationToggle 
           workflowId={id!}
           initialActive={workflowData?.data?.isActive || false}
+          isDisabled={balance?.balance === 0}
         />
       </div>
+
+      {/* CRITICAL: Zero Balance Block */}
+      {showZeroBalanceBlock && (
+        <div className="bg-red-500/10 border-b-4 border-red-500 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={28} className="text-red-500" />
+              <div>
+                <div className="font-bold text-lg text-red-500">⛔ No Credits Available</div>
+                <div className="text-sm text-red-400">
+                  Workflow execution is blocked. Please top up your balance to continue.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPrepaymentModal(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors"
+            >
+              <Wallet size={20} />
+              Add Credits Now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* WARNING: Low Balance Warning */}
+      {showLowBalanceWarning && (
+        <div className="bg-yellow-500/10 border-b-2 border-yellow-500/50 px-6 py-3 cursor-pointer hover:bg-yellow-500/20 transition-colors"
+          onClick={() => setShowPrepaymentModal(true)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={24} className="text-yellow-500" />
+              <div>
+                <div className="font-semibold text-yellow-500">
+                  ⚠️ Low Credits Warning: {currentBalance.toLocaleString()} remaining
+                </div>
+                <div className="text-xs text-yellow-400">
+                  Your balance is critically low. Click here to top up before it runs out.
+                </div>
+              </div>
+            </div>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 text-yellow-500 font-medium rounded-lg hover:bg-yellow-500/30 transition-colors"
+            >
+              <Wallet size={18} />
+              Top Up
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-hidden relative">
         {isWaitingForTrigger && (
@@ -165,8 +238,20 @@ export function WorkflowEditor() {
             </div>
           </div>
         )}
-        <WorkflowCanvas workflowId={id} onSave={handleSave} onRun={handleRun} />
+        <WorkflowCanvas 
+          workflowId={id} 
+          onSave={handleSave} 
+          onRun={handleRun}
+          isRunDisabled={showZeroBalanceBlock}
+        />
       </div>
+
+      {/* Prepayment Modal */}
+      <PrepaymentModal
+        isOpen={showPrepaymentModal}
+        onClose={() => setShowPrepaymentModal(false)}
+        onSuccess={handlePrepaymentSuccess}
+      />
     </div>
   );
 }

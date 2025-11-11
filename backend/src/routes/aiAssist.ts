@@ -161,6 +161,12 @@ Extracted entities from user message:
                                ↑ tool edge
                           [Send Telegram]
    
+   🔘 TELEGRAM BUTTONS & CALLBACKS:
+   - For YES/NO questions or confirmations: use send_telegram_inline_keyboard (NOT send_telegram!)
+   - ALWAYS add handle_callback_query when using inline keyboards
+   - Example buttons: [{"text": "Buy", "callback_data": "buy_confirm"}]
+   - handle_callback_query processes button clicks and extracts callback_data
+   
    🔑 CRITICAL IMPLEMENTATION RULES:
    
    A. EDGES STRUCTURE (example):
@@ -184,10 +190,23 @@ Extracted entities from user message:
       - Tools receive params from AI Agent dynamically
       - Just place them on canvas with tool edge to AI Agent
    
-   E. WHY THIS WORKS (like n8n):
+   E. TOOL SELECTION GUIDE:
+      - Simple text messages → send_telegram
+      - Questions with buttons → send_telegram_inline_keyboard + handle_callback_query
+      - User confirmation needed → ALWAYS use inline keyboard (buttons)
+      - Trading/buying → authorize_session_key + execute_trade_with_session_key
+      - Token info → jupiter_token_info (NOT old blocks)
+   
+   F. WHY THIS WORKS (like n8n):
       - Tool edges excluded from main execution flow
       - AI Agent calls tools internally via LLM tool calling
       - Same architecture as n8n sub-nodes!
+   
+   G. COMMON PATTERNS:
+      - Token analysis: jupiter_token_info + send_telegram
+      - Token analysis WITH purchase: jupiter_token_info + send_telegram_inline_keyboard + handle_callback_query + authorize_session_key + execute_trade_with_session_key
+      - Simple Q&A: just send_telegram
+      - Interactive Q&A: send_telegram_inline_keyboard + handle_callback_query
    
    AI Agent system message should guide ANALYSIS:
    
@@ -201,8 +220,15 @@ Extracted entities from user message:
       - Top holder %: >20% is concerning (whale risk)
       - Security: mint/freeze authority should be disabled
       - Organic score: >50 is decent, >70 is good
-   3. Give a VERDICT: Safe/Risky/Scam with reasoning
-   4. Use send_telegram tool to send your analysis
+   3. FORMAT your response using Markdown:
+      - Title: **Token Name (Symbol)**
+      - Each stat on NEW LINE with emoji and **bold label:**
+      - Example: 💰 **Price:** $0.00133
+      - Add BLANK LINE before Verdict
+      - Verdict format: **Verdict:** ✅/⚠️/❌ [Safe/Risky/Scam]
+      - Reasoning on new line after verdict
+   4. Give a VERDICT: ✅ Safe / ⚠️ Risky / ❌ Scam
+   5. Use send_telegram tool to send formatted analysis
    
    For /start: Ask user to provide token address"
    
@@ -315,13 +341,24 @@ Generate workflow JSON:
       }
     }
 
-    // If all models failed
+    // FALLBACK: Try OpenRouter FREE models if Groq failed
     if (!llmResponse) {
-      logger.error('All Groq models in cascade failed', lastError);
-      return res.status(500).json({
-        success: false,
-        error: 'AI service temporarily unavailable. All models failed.',
-      });
+      const OR_KEY = process.env.OPEN_ROUTER_API || process.env.OPENROUTER_API_KEY;
+      if (OR_KEY) {
+        const freeModels = ['meta-llama/llama-3.2-3b-instruct:free', 'google/gemini-flash-1.5-8b:free'];
+        for (const m of freeModels) {
+          try {
+            logger.info(`OpenRouter FREE: ${m}`);
+            llmResponse = await axios.post('https://openrouter.ai/api/v1/chat/completions', { model: m, messages: [{ role: 'system', content: systemPrompt }, ...(conversationHistory || []), { role: 'user', content: message }], temperature: 0.7, max_tokens: 4000 }, { headers: { 'Authorization': `Bearer ${OR_KEY}`, 'HTTP-Referer': 'https://agent.mixas.pro' }, timeout: 30000 });
+            modelUsed = m; logger.info(`✅ OpenRouter: ${m}`); break;
+          } catch (e: any) { lastError = e; logger.warn(`OpenRouter ${m} fail`); }
+        }
+      }
+    }
+    
+    if (!llmResponse) {
+      logger.error('All AI providers failed', lastError);
+      return res.status(500).json({ success: false, error: 'All AI models unavailable' });
     }
 
     const aiResponse = llmResponse.data.choices[0].message.content;

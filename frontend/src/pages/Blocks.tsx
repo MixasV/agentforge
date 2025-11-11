@@ -50,6 +50,7 @@ export function Blocks() {
     { id: 'trigger', name: 'Triggers', count: blocks.filter((b) => b.category === 'trigger').length },
     { id: 'data', name: 'Data Sources', count: blocks.filter((b) => b.category === 'data').length },
     { id: 'action', name: 'Actions', count: blocks.filter((b) => b.category === 'action').length },
+    { id: 'telegram', name: 'Telegram', count: blocks.filter((b) => b.category === 'telegram').length },
     { id: 'logic', name: 'Logic', count: blocks.filter((b) => b.category === 'logic').length },
     { id: 'ai', name: 'AI', count: blocks.filter((b) => b.category === 'ai').length },
   ];

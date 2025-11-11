@@ -162,12 +162,18 @@ model BlockUsage {
 }
 
 model UserSettings {
-  id                  String   @id @default(uuid())
-  userId              String   @unique @map("user_id")
-  telegramBotToken    String?  @map("telegram_bot_token") @db.Text
-  telegramBotUsername String?  @map("telegram_bot_username") @db.VarChar(255)
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id                      String   @id @default(uuid())
+  userId                  String   @unique @map("user_id")
+  telegramBotToken        String?  @map("telegram_bot_token") @db.Text
+  telegramBotUsername     String?  @map("telegram_bot_username") @db.VarChar(255)
+  autoRechargeEnabled     Boolean  @default(false) @map("auto_recharge_enabled")
+  autoRechargeThreshold   BigInt   @default(999) @map("auto_recharge_threshold")
+  autoRechargeAmount      Decimal  @default(10) @map("auto_recharge_amount") @db.Decimal(10, 2)
+  autoRechargeCurrency    String   @default("USDC") @map("auto_recharge_currency") @db.VarChar(20)
+  autoRechargeDelegateKey String?  @map("auto_recharge_delegate_key") @db.Text
+  emailNotifications      Boolean  @default(true) @map("email_notifications")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

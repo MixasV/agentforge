@@ -7,12 +7,14 @@ interface ActivationToggleProps {
   workflowId: string;
   initialActive?: boolean;
   onStatusChange?: (isActive: boolean) => void;
+  isDisabled?: boolean;
 }
 
 export function ActivationToggle({ 
   workflowId, 
   initialActive = false,
-  onStatusChange 
+  onStatusChange,
+  isDisabled = false
 }: ActivationToggleProps) {
   const [isActive, setIsActive] = useState(initialActive);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +25,11 @@ export function ActivationToggle({
   }, [initialActive]);
 
   const handleToggle = async () => {
+    if (isDisabled) {
+      toast.error('Insufficient credits! Please add credits to activate workflow.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -59,7 +66,8 @@ export function ActivationToggle({
     <div className="flex items-center gap-3">
       <button
         onClick={handleToggle}
-        disabled={isLoading}
+        disabled={isLoading || isDisabled}
+        title={isDisabled ? "Insufficient credits - please top up" : undefined}
         className={`
           relative flex items-center gap-2 px-4 py-2 rounded-lg font-medium
           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed

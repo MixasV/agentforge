@@ -448,6 +448,8 @@ function registerTools(
           ...params,
           chatId: params.chatId || params.chat_id || config.chatId,
           botToken: resolvedBotToken,
+          // ✅ FORCE Markdown for send_telegram from AI Agent
+          ...(blockType === 'send_telegram' && { parseMode: params.parseMode || 'Markdown' }),
         };
 
         // Execute the block
