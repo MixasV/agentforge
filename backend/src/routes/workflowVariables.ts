@@ -54,7 +54,7 @@ router.get('/:workflowId/variables', authenticate, async (req: AuthRequest, res:
 router.post('/:workflowId/variables', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { workflowId } = req.params;
-    const { key, value, description, isSecret } = req.body;
+    const { key, value, description, isSecret, isLocked } = req.body;
     const userId = req.user!.id;
 
     // Validate input
@@ -66,9 +66,10 @@ router.post('/:workflowId/variables', authenticate, async (req: AuthRequest, res
       return;
     }
 
-    // Convert key to uppercase with underscores for consistency
-    // botToken → BOT_TOKEN, apiKey → API_KEY
-    const normalizedKey = key.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
+    // Keep key as is (don't normalize to uppercase)
+    // We want botToken to stay as botToken, not become BOT_TOKEN
+    // This prevents confusion with environment variables
+    const normalizedKey = key;
 
     // Verify workflow belongs to user
     const workflow = await prisma.workflow.findFirst({
@@ -79,6 +80,25 @@ router.post('/:workflowId/variables', authenticate, async (req: AuthRequest, res
       res.status(404).json({
         success: false,
         error: 'Workflow not found',
+      });
+      return;
+    }
+
+    // Check if variable exists and is locked
+    const existing = await prisma.workflowVariable.findUnique({
+      where: {
+        workflowId_key: {
+          workflowId,
+          key: normalizedKey,
+        },
+      },
+    });
+
+    // Prevent changing value of locked variables
+    if (existing && existing.isLocked && existing.value !== value) {
+      res.status(403).json({
+        success: false,
+        error: `Variable "${key}" is locked and cannot be changed. Unlock it first.`,
       });
       return;
     }
@@ -95,6 +115,7 @@ router.post('/:workflowId/variables', authenticate, async (req: AuthRequest, res
         value,
         description,
         isSecret: isSecret || false,
+        isLocked: isLocked !== undefined ? isLocked : (existing?.isLocked || false),
       },
       create: {
         workflowId,
@@ -102,6 +123,7 @@ router.post('/:workflowId/variables', authenticate, async (req: AuthRequest, res
         value,
         description,
         isSecret: isSecret || false,
+        isLocked: isLocked || false,
       },
     });
 
@@ -123,6 +145,49 @@ router.post('/:workflowId/variables', authenticate, async (req: AuthRequest, res
   }
 });
 
+// Toggle lock status of a variable
+router.patch('/:workflowId/variables/:variableId/lock', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { workflowId, variableId } = req.params;
+    const { isLocked } = req.body;
+    const userId = req.user!.id;
+
+    // Verify workflow belongs to user
+    const workflow = await prisma.workflow.findFirst({
+      where: { id: workflowId, userId },
+    });
+
+    if (!workflow) {
+      res.status(404).json({
+        success: false,
+        error: 'Workflow not found',
+      });
+      return;
+    }
+
+    const variable = await prisma.workflowVariable.update({
+      where: { id: variableId, workflowId },
+      data: { isLocked: isLocked },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        variable: {
+          ...variable,
+          value: variable.isSecret ? '********' : variable.value,
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error('Failed to toggle variable lock', { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to toggle variable lock',
+    });
+  }
+});
+
 // Delete a variable
 router.delete('/:workflowId/variables/:variableId', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -138,6 +203,19 @@ router.delete('/:workflowId/variables/:variableId', authenticate, async (req: Au
       res.status(404).json({
         success: false,
         error: 'Workflow not found',
+      });
+      return;
+    }
+
+    // Check if variable is locked
+    const variable = await prisma.workflowVariable.findUnique({
+      where: { id: variableId, workflowId },
+    });
+
+    if (variable && variable.isLocked) {
+      res.status(403).json({
+        success: false,
+        error: 'Cannot delete locked variable. Unlock it first.',
       });
       return;
     }

@@ -27,9 +27,20 @@ export function useExecutionStream(workflowId: string, executionId: string | nul
     // Clear previous states
     clearExecutionStates();
 
-    // Create EventSource for SSE
-    const url = `/api/workflows/${workflowId}/executions/${executionId}/stream`;
-    const eventSource = new EventSource(url, { withCredentials: true });
+    // Get JWT token from localStorage (key is 'authToken' not 'token')
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      console.error('[ExecutionStream] No auth token found - SSE will not work');
+      // Don't return - try anyway in case auth is handled differently
+    }
+
+    // Create EventSource for SSE (pass token as query param since SSE doesn't support headers)
+    const url = token 
+      ? `/api/workflows/${workflowId}/executions/${executionId}/stream?token=${encodeURIComponent(token)}`
+      : `/api/workflows/${workflowId}/executions/${executionId}/stream`;
+    
+    console.log('[ExecutionStream] Connecting to:', url.substring(0, 100));
+    const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

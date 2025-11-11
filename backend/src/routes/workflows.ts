@@ -6,6 +6,7 @@ import { broadcastExecutionEvent } from './executionStream';
 import { authenticate } from '../middleware/auth';
 import { prisma } from '../utils/prisma';
 import { NotFoundError } from '../utils/errors';
+import { logger } from '../utils/logger';
 import {
   validateSchema,
   paginationSchema,
@@ -109,6 +110,84 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res, next) => {
   }
 });
 
+// STEP 1: Create execution record (for SSE to connect first)
+router.post('/:id/executions/create', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    const workflowId = validateSchema(uuidSchema, req.params.id);
+    const { inputs } = validateSchema(workflowRunSchema, req.body);
+
+    // Create execution record
+    const execution = await prisma.workflowExecution.create({
+      data: {
+        workflowId,
+        status: 'running',
+        inputData: inputs || {},
+      },
+    });
+
+    logger.info('Execution created (waiting for SSE)', { workflowId, executionId: execution.id });
+
+    return res.json({
+      success: true,
+      data: {
+        executionId: execution.id,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// STEP 2: Start workflow execution (after SSE connected)
+router.post('/:id/executions/:executionId/start', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    const workflowId = validateSchema(uuidSchema, req.params.id);
+    const executionId = req.params.executionId;
+
+    logger.info('Starting workflow execution', { workflowId, executionId });
+
+    const workflow = await prisma.workflow.findUnique({
+      where: { id: workflowId, userId: req.user.id },
+    });
+    if (!workflow) {
+      throw new NotFoundError('Workflow not found');
+    }
+
+    const executor = new WorkflowExecutor();
+    
+    executor.on('nodeStarted', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeStarted', ...event });
+    });
+    
+    executor.on('nodeCompleted', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeCompleted', ...event });
+    });
+    
+    executor.on('nodeFailed', (event) => {
+      broadcastExecutionEvent(workflowId, event.executionId, { type: 'nodeFailed', ...event });
+    });
+
+    // Execute with pre-created executionId
+    const result = await executor.executeWithId(workflowId, req.user.id, {}, executionId);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Legacy endpoint: Run workflow (old way)
 router.post('/:id/run', authenticate, async (req: AuthRequest, res, next) => {
   try {
     if (!req.user) {

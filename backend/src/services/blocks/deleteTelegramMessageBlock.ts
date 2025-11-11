@@ -5,7 +5,7 @@ import { telegramService } from '../telegramService';
 export const deleteTelegramMessageBlock: BlockDefinition = {
   name: 'Delete Telegram Message',
   description: 'Delete a Telegram message',
-  category: 'action',
+  category: 'telegram',
   inputs: [
     {
       name: 'botToken',

@@ -1,0 +1,439 @@
+import { Router } from 'express';
+import { logger } from '../utils/logger';
+import axios from 'axios';
+
+const router = Router();
+
+// Groq API configuration with model cascade
+// Groq provides fast, stable inference with no provider rate limits
+const GROQ_API_KEY = process.env.GROQ_API;
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+// Model cascade: try models in order until one succeeds
+// Groq models: 280-560 tokens/sec, stable, no provider 429 errors
+const MODEL_CASCADE = [
+  'llama-3.3-70b-versatile',      // 70B, 280 t/s, best quality
+  'openai/gpt-oss-120b',          // 120B, 470 t/s, reasoning
+  'llama-3.1-8b-instant',         // 8B, 560 t/s, fastest backup
+];
+
+// Trading keywords detection
+const TRADE_KEYWORDS = {
+  en: ['buy', 'sell', 'trade', 'swap', 'purchase', 'execute order', 'place order', 'market order'],
+  ru: ['купить', 'продать', 'торговать', 'обменять', 'свапнуть', 'сделка', 'ордер', 'купля'],
+};
+
+// Entity extraction
+function extractEntities(message: string) {
+  return {
+    botTokens: message.match(/\d+:[A-Za-z0-9_-]{35}/g) || [],
+    walletAddresses: message.match(/[A-HJ-NP-Za-km-z1-9]{32,44}/g) || [],
+    mentions: {
+      SOL: /\bSOL\b|solana/i.test(message),
+      USDC: /\bUSDC\b/i.test(message),
+      BONK: /\bBONK\b/i.test(message),
+      buy: TRADE_KEYWORDS.en.some(kw => message.toLowerCase().includes(kw)) || 
+           TRADE_KEYWORDS.ru.some(kw => message.toLowerCase().includes(kw)),
+      price: /price|цена|стоимость/i.test(message),
+      telegram: /telegram|бот|bot/i.test(message),
+    }
+  };
+}
+
+// Detect if request requires trading
+function requiresTrading(message: string): boolean {
+  const allKeywords = [...TRADE_KEYWORDS.en, ...TRADE_KEYWORDS.ru];
+  return allKeywords.some(kw => message.toLowerCase().includes(kw));
+}
+
+import { BlocksKnowledgeBase } from '../services/blocksKnowledgeBase';
+
+// Generate trading bot prompt
+function getTradingBotPrompt() {
+  return `You are a Solana trading assistant bot.
+
+User will send trading commands in natural language.
+Extract structured data from their messages.
+
+Supported commands:
+1. "Buy [token] for [amount] [currency]"
+   Example: "Buy SOL for 100 USDC"
+   Extract: {action: "buy", token: "SOL", amount: 100, currency: "USDC"}
+
+2. "Sell [amount] [token]"
+   Example: "Sell 5 SOL"
+   Extract: {action: "sell", token: "SOL", amount: 5}
+
+3. "Price [token]"
+   Example: "What's the price of SOL?"
+   Extract: {action: "price", token: "SOL"}
+
+4. "Buy [token] when price reaches [price]"
+   Example: "Buy SOL when price drops to $150"
+   Extract: {action: "buy_limit", token: "SOL", targetPrice: 150}
+
+Token addresses (use these):
+- SOL: So11111111111111111111111111111111111112
+- USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+- BONK: DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+
+Output format:
+{
+  "action": "buy" | "sell" | "price" | "buy_limit" | "sell_limit",
+  "tokenAddress": "base58_address",
+  "amount": number,
+  "targetPrice": number (optional),
+  "confidence": 0-1
+}
+
+If unclear, ask for clarification.
+NEVER execute trades without Session Key authorization!`;
+}
+
+// POST /api/workflows/ai-assist
+router.post('/ai-assist', async (req, res): Promise<any> => {
+  try {
+    const { message, currentWorkflow, conversationHistory } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Message is required',
+      });
+    }
+
+    logger.info('AI Assist request', { userId, message: message.substring(0, 100) });
+
+    // Extract entities from message
+    const entities = extractEntities(message);
+    const needsTrading = requiresTrading(message);
+
+    // Determine use case
+    let useCase: 'telegram_bot' | 'trading' | 'data_processing' | 'general' = 'general';
+    if (entities.mentions.telegram || /telegram|бот|bot/i.test(message)) {
+      useCase = 'telegram_bot';
+    }
+    if (needsTrading) {
+      useCase = 'trading';
+    }
+
+    // Generate blocks documentation using Knowledge Base
+    const blocksDoc = BlocksKnowledgeBase.generateLLMBlocksPrompt({
+      useCase,
+      emphasizeBlocks: useCase === 'telegram_bot' ? ['telegram_trigger', 'ai_agent'] : undefined,
+    });
+
+    // Build system prompt
+    const systemPrompt = `You are AgentForge AI Assistant. Help users build Solana workflows.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 AVAILABLE BLOCKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${blocksDoc}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current workflow state:
+${currentWorkflow ? JSON.stringify(currentWorkflow, null, 2) : 'Empty canvas'}
+
+Extracted entities from user message:
+- Bot Tokens: ${entities.botTokens.length > 0 ? entities.botTokens[0] : 'none'}
+- Wallet Addresses: ${entities.walletAddresses.join(', ') || 'none'}
+- Mentions: ${Object.entries(entities.mentions).filter(([, v]) => v).map(([k]) => k).join(', ')}
+- Trading required: ${needsTrading ? 'YES - USE SESSION KEYS!' : 'no'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ CRITICAL RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **INTERACTIVE BOTS**: AI Agent with Visual Tool Connections (like n8n sub-nodes)
+   
+   ❌ WRONG - Linear flow (tools execute automatically):
+   [Telegram] → [AI Agent] → [Jupiter Token Info] → [Send Telegram]
+   
+   ✅ RIGHT - Tools as sub-nodes (AI Agent calls them internally):
+   [Telegram Trigger] ──→ [AI Agent]
+                               ↑ tool edge
+                          [Jupiter Token Info]
+                               ↑ tool edge
+                          [Send Telegram]
+   
+   🔑 CRITICAL IMPLEMENTATION RULES:
+   
+   A. EDGES STRUCTURE (example):
+      Main flow edge: { source: "telegram_trigger", target: "ai_agent" }
+      Tool edges: { source: "jupiter_token_info", target: "ai_agent", targetHandle: "tool" }
+                  { source: "send_telegram", target: "ai_agent", targetHandle: "tool" }
+   
+   B. WHAT HAPPENS:
+      - Topological sort EXCLUDES tool edges (targetHandle='tool')
+      - Main flow: Telegram Trigger → AI Agent (that's it!)
+      - Tool nodes (Jupiter, Send Telegram) are NOT executed automatically
+      - AI Agent discovers tools via edges and calls them ONLY when needed
+   
+   C. AI AGENT CONFIG:
+      - userMessage: "{{telegram_trigger.messageText}}"
+      - enabledTools: "" (leave empty - tools discovered via edges)
+      - systemMessage: guide the agent's behavior
+   
+   D. TOOL BLOCKS CONFIG:
+      - DO NOT add config like query: "{{ai_agent.something}}"
+      - Tools receive params from AI Agent dynamically
+      - Just place them on canvas with tool edge to AI Agent
+   
+   E. WHY THIS WORKS (like n8n):
+      - Tool edges excluded from main execution flow
+      - AI Agent calls tools internally via LLM tool calling
+      - Same architecture as n8n sub-nodes!
+   
+   AI Agent system message should guide ANALYSIS:
+   
+   Example system message for token analysis bot:
+   "You are an expert Solana token analyst. When user provides a token:
+   1. Call jupiter_token_info tool to get data
+   2. ANALYZE the data critically:
+      - Price & Market Cap: Is it realistic?
+      - Liquidity: Is it sufficient? (>$50k is good)
+      - Holders: More holders = more distributed
+      - Top holder %: >20% is concerning (whale risk)
+      - Security: mint/freeze authority should be disabled
+      - Organic score: >50 is decent, >70 is good
+   3. Give a VERDICT: Safe/Risky/Scam with reasoning
+   4. Use send_telegram tool to send your analysis
+   
+   For /start: Ask user to provide token address"
+   
+2. When trading is involved, ALWAYS use Session Keys blocks:
+   - authorize_session_key
+   - execute_trade_with_session_key
+3. Auto-fill configs when possible (bot tokens, known addresses, etc.)
+4. For trading bots, generate comprehensive LLM Intent Analysis prompt
+5. Use {{block_id.output}} syntax for dynamic references
+6. Return valid JSON with nodes and edges
+
+${needsTrading ? `
+⚠️ TRADING DETECTED!
+You MUST include:
+1. Telegram Trigger (with auto-filled botToken if provided)
+2. LLM Intent Analysis with trading prompt (use this):
+${getTradingBotPrompt()}
+3. Router block (based on LLM action)
+4. Authorize Session Key block (permissions: TRADE_ONLY, maxAmount: ask user or default 1000, expiresIn: 30d)
+5. Execute Trade with Session Key block (uses LLM outputs)
+6. Send Telegram response
+
+Explain to user:
+- What commands bot will understand
+- Session Key security benefits
+- Setup steps
+` : ''}
+
+User request: "${message}"
+
+Generate workflow JSON:
+{
+  "message": "Natural language explanation",
+  "nodes": [
+    {
+      "id": "unique-id",
+      "type": "block_type",
+      "position": {"x": number, "y": number},
+      "data": {
+        "type": "block_type",
+        "label": "Block Name",
+        "category": "trigger|action|ai|logic|data",
+        "config": {
+          // Auto-filled where possible!
+          "botToken": "${entities.botTokens[0] || '{{env.TELEGRAM_BOT_TOKEN}}'}",
+          // Use dynamic references: "{{other_block.output}}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-id",
+      "source": "source-node-id",
+      "target": "target-node-id"
+    }
+  ],
+  "explanation": "Step by step what workflow does",
+  "securityNotes": ["Note 1", "Note 2"] (if trading),
+  "commandExamples": ["Example 1"] (if bot with LLM),
+  "nextSteps": ["Step 1", "Step 2"]
+}`;
+
+    // Call Groq API with cascade fallback
+    if (!GROQ_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: 'AI service not configured. Please set GROQ_API in .env file.',
+      });
+    }
+
+    let llmResponse;
+    let modelUsed = '';
+    let lastError;
+
+    // Try models in cascade until one succeeds
+    for (const model of MODEL_CASCADE) {
+      try {
+        logger.info(`Trying Groq model: ${model}`);
+        
+        llmResponse = await axios.post(
+          GROQ_API_URL,
+          {
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...(conversationHistory || []),
+              { role: 'user', content: message },
+            ],
+            temperature: 0.7,
+            max_tokens: 4000,
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${GROQ_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 30000,
+          }
+        );
+
+        modelUsed = model;
+        logger.info(`Groq model succeeded: ${model}`);
+        break; // Success! Exit loop
+      } catch (error: any) {
+        lastError = error;
+        const errorMsg = error.response?.data?.error?.message || error.message;
+        logger.warn(`Groq model ${model} failed: ${errorMsg}`);
+        // Continue to next model
+      }
+    }
+
+    // If all models failed
+    if (!llmResponse) {
+      logger.error('All Groq models in cascade failed', lastError);
+      return res.status(500).json({
+        success: false,
+        error: 'AI service temporarily unavailable. All models failed.',
+      });
+    }
+
+    const aiResponse = llmResponse.data.choices[0].message.content;
+
+    // Parse JSON from response
+    let workflowData;
+    try {
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) ||
+                       aiResponse.match(/(\{[\s\S]*\})/);
+      
+      if (jsonMatch) {
+        // Remove JavaScript comments from JSON (AI likes to add them)
+        let jsonStr = jsonMatch[1];
+        jsonStr = jsonStr.replace(/\/\/[^\n]*/g, ''); // Remove // comments
+        jsonStr = jsonStr.replace(/\/\*[\s\S]*?\*\//g, ''); // Remove /* */ comments
+        
+        workflowData = JSON.parse(jsonStr);
+      } else {
+        throw new Error('No JSON found in response');
+      }
+    } catch (parseError) {
+      logger.error('Failed to parse AI response', { aiResponse, parseError });
+      return res.status(500).json({
+        success: false,
+        error: 'AI generated invalid response. Please try rephrasing your request.',
+        rawResponse: aiResponse,
+      });
+    }
+
+    // Validate workflow structure
+    if (!workflowData.nodes || !Array.isArray(workflowData.nodes)) {
+      logger.error('Invalid workflow: missing nodes array', { workflowData });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid workflow structure: missing nodes array',
+      });
+    }
+
+    if (!workflowData.edges || !Array.isArray(workflowData.edges)) {
+      logger.error('Invalid workflow: missing edges array', { workflowData });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid workflow structure: missing edges array',
+      });
+    }
+
+    // Validate each node has required fields
+    for (const node of workflowData.nodes) {
+      if (!node.id || !node.type || !node.data || !node.position) {
+        logger.error('Invalid node structure', { node });
+        return res.status(400).json({
+          success: false,
+          error: `Invalid node structure: missing required fields`,
+        });
+      }
+    }
+
+    // Validate each edge has required fields
+    for (const edge of workflowData.edges) {
+      if (!edge.id || !edge.source || !edge.target) {
+        logger.error('Invalid edge structure', { edge });
+        return res.status(400).json({
+          success: false,
+          error: `Invalid edge structure: missing required fields`,
+        });
+      }
+    }
+
+    // Auto-layout nodes if positions not specified
+    workflowData.nodes = workflowData.nodes.map((node: any, index: number) => ({
+      ...node,
+      position: node.position || {
+        x: 100 + (index % 3) * 250,
+        y: 100 + Math.floor(index / 3) * 150,
+      },
+    }));
+
+    // Return response
+    res.json({
+      success: true,
+      data: {
+        message: workflowData.message || 'Workflow generated successfully',
+        workflow: {
+          nodes: workflowData.nodes,
+          edges: workflowData.edges || [],
+        },
+        explanation: workflowData.explanation,
+        securityNotes: workflowData.securityNotes,
+        commandExamples: workflowData.commandExamples,
+        nextSteps: workflowData.nextSteps,
+        entities,
+        needsTrading,
+        modelUsed, // Include which model from cascade was used
+      },
+    });
+
+  } catch (error: any) {
+    logger.error('AI Assist failed', error);
+    
+    let errorMessage = 'Failed to generate workflow';
+    if (error.response?.status === 429) {
+      errorMessage = 'AI service rate limited. Please try again in a moment.';
+    } else if (error.code === 'ECONNABORTED') {
+      errorMessage = 'Request timeout. Please try a simpler request.';
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+export default router;

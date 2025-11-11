@@ -9,6 +9,7 @@ import { BlockDefinition } from '@/types';
 export function NodeInspector() {
   const { selectedNode, updateNode, removeNode, setSelectedNode } = useWorkflowStore();
   const [config, setConfig] = useState<Record<string, any>>({});
+  const [visibleFields, setVisibleFields] = useState<string[]>([]);
 
   const { data: blocksData } = useQuery({
     queryKey: ['blocks'],
@@ -24,10 +25,35 @@ export function NodeInspector() {
   useEffect(() => {
     if (selectedNode?.data?.config) {
       setConfig(selectedNode.data.config);
+      
+      // Initialize visible fields: required fields + any fields that have values
+      if (currentBlockDef) {
+        const requiredFields = currentBlockDef.inputs
+          .filter(i => i.required)
+          .map(i => i.name);
+        
+        const fieldsWithValues = Object.keys(selectedNode.data.config).filter(
+          key => selectedNode.data.config[key] !== undefined && 
+                 selectedNode.data.config[key] !== null &&
+                 selectedNode.data.config[key] !== ''
+        );
+        
+        const uniqueFields = Array.from(new Set([...requiredFields, ...fieldsWithValues]));
+        setVisibleFields(uniqueFields);
+      }
     } else {
       setConfig({});
+      // Show only required fields by default
+      if (currentBlockDef) {
+        const requiredFields = currentBlockDef.inputs
+          .filter(i => i.required)
+          .map(i => i.name);
+        setVisibleFields(requiredFields);
+      } else {
+        setVisibleFields([]);
+      }
     }
-  }, [selectedNode]);
+  }, [selectedNode, currentBlockDef]);
 
   if (!selectedNode) {
     return (
@@ -114,7 +140,13 @@ export function NodeInspector() {
 
         <div className="space-y-4 mb-6">
           {currentBlockDef ? (
-            currentBlockDef.inputs.map((input) => (
+            <>
+              {/* Visible fields (required + added optional) */}
+              {visibleFields.map((fieldName) => {
+                const input = currentBlockDef.inputs.find(i => i.name === fieldName);
+                if (!input) return null;
+                
+                return (
               <div key={input.name}>
                 <label className="block text-sm font-medium mb-2">
                   {input.name}
@@ -200,7 +232,61 @@ export function NodeInspector() {
                   <p className="text-xs text-gray-500 mt-1">{input.description}</p>
                 )}
               </div>
-            ))
+                );
+              })}
+
+              {/* Additional Fields section */}
+              {(() => {
+                const optionalFields = currentBlockDef.inputs.filter(
+                  i => !i.required && !visibleFields.includes(i.name)
+                );
+                
+                if (optionalFields.length === 0) return null;
+
+                return (
+                  <div className="pt-4 border-t border-dark-border">
+                    <details className="group">
+                      <summary className="flex items-center justify-between cursor-pointer text-sm font-medium text-gray-300 hover:text-white">
+                        <span>Additional Fields</span>
+                        <svg
+                          className="w-5 h-5 transition-transform group-open:rotate-180"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+                      
+                      <div className="mt-3 space-y-2">
+                        {optionalFields.map((field) => (
+                          <button
+                            key={field.name}
+                            onClick={() => setVisibleFields([...visibleFields, field.name])}
+                            className="w-full text-left px-3 py-2 text-sm bg-dark-bg hover:bg-dark-border rounded-lg transition-colors flex items-center justify-between group"
+                          >
+                            <div>
+                              <div className="font-medium text-gray-200">{field.name}</div>
+                              {field.description && (
+                                <div className="text-xs text-gray-500 mt-0.5">{field.description}</div>
+                              )}
+                            </div>
+                            <svg
+                              className="w-4 h-4 text-gray-500 group-hover:text-solana-purple"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                );
+              })()}
+            </>
           ) : (
             <p className="text-sm text-gray-400">No configuration available for this block</p>
           )}

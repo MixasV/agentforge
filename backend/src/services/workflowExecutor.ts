@@ -10,10 +10,20 @@ export class WorkflowExecutor extends EventEmitter {
     super();
   }
 
+  async executeWithId(
+    workflowId: string,
+    userId: string,
+    inputs: Record<string, unknown> = {},
+    executionId: string
+  ) {
+    return this.execute(workflowId, userId, inputs, executionId);
+  }
+
   async execute(
     workflowId: string,
     userId: string,
-    inputs: Record<string, unknown> = {}
+    inputs: Record<string, unknown> = {},
+    existingExecutionId?: string
   ) {
     const startTime = Date.now();
     let executionId: string | null = null;
@@ -45,14 +55,20 @@ export class WorkflowExecutor extends EventEmitter {
         edges: WorkflowEdge[];
       };
 
-      const execution = await prisma.workflowExecution.create({
-        data: {
-          workflowId,
-          status: 'running',
-          inputData: JSON.parse(JSON.stringify(inputs)),
-        },
-      });
-      executionId = execution.id;
+      // Use existing execution or create new one
+      if (existingExecutionId) {
+        executionId = existingExecutionId;
+        logger.info('Using pre-created execution', { workflowId, executionId });
+      } else {
+        const execution = await prisma.workflowExecution.create({
+          data: {
+            workflowId,
+            status: 'running',
+            inputData: JSON.parse(JSON.stringify(inputs)),
+          },
+        });
+        executionId = execution.id;
+      }
 
       logger.info('Workflow execution started', { workflowId, executionId, userId });
 
@@ -65,6 +81,12 @@ export class WorkflowExecutor extends EventEmitter {
         userId,
         workflowId,
         envVars,
+        edges: canvas.edges, // For discovering tool connections
+        allNodes: canvas.nodes, // For resolving tool blocks
+        triggerData: inputs.triggerData as any, // Pass webhook data to trigger blocks
+        isWebhook: !!inputs.triggerData, // Flag for webhook vs RUN mode
+        executor: this, // Pass executor for tool node events
+        executionId, // Pass executionId for events
       };
 
       for (const node of sortedNodes) {
@@ -220,15 +242,41 @@ export class WorkflowExecutor extends EventEmitter {
   }
 
   private topologicalSort(nodes: WorkflowNode[], edges: WorkflowEdge[]): WorkflowNode[] {
+    // CRITICAL: Exclude tool edges (targetHandle='tool') from topological sort
+    // Tool nodes should NOT be in main execution flow - they're called by AI Agent internally
+    const mainFlowEdges = edges.filter(edge => edge.targetHandle !== 'tool');
+    
+    // Get only nodes that are in main flow (not tool nodes)
+    const nodesInMainFlow = new Set<string>();
+    mainFlowEdges.forEach(edge => {
+      nodesInMainFlow.add(edge.source);
+      nodesInMainFlow.add(edge.target);
+    });
+    // Add standalone nodes (triggers without any edges)
+    nodes.forEach(node => {
+      const hasAnyEdge = edges.some(e => e.source === node.id || e.target === node.id);
+      if (!hasAnyEdge) {
+        nodesInMainFlow.add(node.id);
+      }
+    });
+
+    logger.info('Topological sort', { 
+      totalEdges: edges.length, 
+      mainFlowEdges: mainFlowEdges.length,
+      toolEdges: edges.length - mainFlowEdges.length,
+      nodesInMainFlow: nodesInMainFlow.size
+    });
+
     const adjacencyList = new Map<string, string[]>();
     const inDegree = new Map<string, number>();
 
-    nodes.forEach(node => {
-      adjacencyList.set(node.id, []);
-      inDegree.set(node.id, 0);
+    // Initialize only nodes in main flow
+    nodesInMainFlow.forEach(nodeId => {
+      adjacencyList.set(nodeId, []);
+      inDegree.set(nodeId, 0);
     });
 
-    edges.forEach(edge => {
+    mainFlowEdges.forEach(edge => {
       const neighbors = adjacencyList.get(edge.source) || [];
       neighbors.push(edge.target);
       adjacencyList.set(edge.source, neighbors);
@@ -260,11 +308,36 @@ export class WorkflowExecutor extends EventEmitter {
       });
     }
 
-    if (sorted.length !== nodes.length) {
-      throw new AppError('Workflow contains cycles', 400);
+    logger.info('Topological sort result', {
+      sortedNodes: sorted.length,
+      expectedMainFlowNodes: nodesInMainFlow.size,
+      totalNodes: nodes.length
+    });
+
+    if (sorted.length !== nodesInMainFlow.size) {
+      throw new AppError('Workflow contains cycles in main flow', 400);
     }
 
     return sorted;
+  }
+
+  /**
+   * Get tool blocks connected to AI Agent node via 'tool' handle
+   */
+  getConnectedTools(nodeId: string, edges: WorkflowEdge[], allNodes: WorkflowNode[]): WorkflowNode[] {
+    const toolEdges = edges.filter(
+      edge => edge.target === nodeId && edge.targetHandle === 'tool'
+    );
+    
+    const toolNodes = toolEdges
+      .map(edge => allNodes.find(n => n.id === edge.source))
+      .filter(Boolean) as WorkflowNode[];
+    
+    logger.info(`Found ${toolNodes.length} tool connections for node ${nodeId}`, {
+      tools: toolNodes.map(n => n.data.type)
+    });
+    
+    return toolNodes;
   }
 
   private resolveInputs(
@@ -274,13 +347,29 @@ export class WorkflowExecutor extends EventEmitter {
   ): Record<string, unknown> {
     const inputs: Record<string, unknown> = { ...node.data.config };
 
+    // Initialize $context for passing shared data between blocks
+    let mergedContext: Record<string, any> = {};
+
     // Merge data from connected previous nodes (like n8n)
     // Data from previous nodes OVERRIDES node config (except if explicitly set in config)
     const incomingEdges = edges.filter(e => e.target === node.id);
     incomingEdges.forEach(edge => {
       const sourceOutput = context.nodeOutputs[edge.source];
       if (sourceOutput) {
+        // Merge $context from previous block
+        if (sourceOutput.$context && typeof sourceOutput.$context === 'object') {
+          mergedContext = {
+            ...mergedContext,
+            ...sourceOutput.$context,
+          };
+        }
+
         Object.keys(sourceOutput).forEach(key => {
+          // Skip $context key (handled separately)
+          if (key === '$context') {
+            return;
+          }
+
           const value = sourceOutput[key];
           const currentValue = inputs[key];
           
@@ -298,6 +387,11 @@ export class WorkflowExecutor extends EventEmitter {
       }
     });
 
+    // Add merged $context to inputs
+    if (Object.keys(mergedContext).length > 0) {
+      inputs.$context = mergedContext;
+    }
+
     // Context inputs (from manual run or webhook) - lowest priority
     if (Object.keys(context.inputs).length > 0) {
       Object.keys(context.inputs).forEach(key => {
@@ -306,6 +400,56 @@ export class WorkflowExecutor extends EventEmitter {
         }
       });
     }
+
+    // Resolve dynamic references: {{node_id.output.field.subfield}} or {{node_id.field}}
+    Object.keys(inputs).forEach(key => {
+      const value = inputs[key];
+      if (typeof value === 'string') {
+        // Replace {{node_id.output.field.subfield...}} patterns
+        inputs[key] = value.replace(/\{\{([\w\.]+)\}\}/g, (match, path) => {
+          const parts = path.split('.');
+          if (parts.length < 2) {
+            logger.warn(`Invalid reference: ${match}`);
+            return match;
+          }
+
+          const nodeId = parts[0];
+          const nodeOutput = context.nodeOutputs[nodeId];
+          
+          if (!nodeOutput) {
+            logger.warn(`Node output not found: ${nodeId}`);
+            return match;
+          }
+
+          // Skip 'output' keyword if present (for backward compatibility)
+          // {{node_id.output.chatId}} = {{node_id.chatId}}
+          let startIndex = 1;
+          if (parts[1] === 'output' && parts.length > 2) {
+            startIndex = 2;
+          }
+
+          // Navigate through nested path (e.g., token.name or output.token.name)
+          let result: any = nodeOutput;
+          for (let i = startIndex; i < parts.length; i++) {
+            if (result && typeof result === 'object' && parts[i] in result) {
+              result = result[parts[i]];
+            } else {
+              logger.warn(`Path not found: ${match} (field: ${parts[i]}, available: ${Object.keys(result || {}).join(', ')})`);
+              return match;
+            }
+          }
+
+          // Convert result to string, handle objects
+          if (result === null || result === undefined) {
+            return '';
+          } else if (typeof result === 'object') {
+            return JSON.stringify(result, null, 2);
+          } else {
+            return String(result);
+          }
+        });
+      }
+    });
 
     // Resolve environment variables: {{env.VARIABLE_NAME}}
     if (context.envVars) {

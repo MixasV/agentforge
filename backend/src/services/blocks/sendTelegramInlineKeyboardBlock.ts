@@ -5,7 +5,7 @@ import { telegramService } from '../telegramService';
 export const sendTelegramInlineKeyboardBlock: BlockDefinition = {
   name: 'Send Telegram Inline Keyboard',
   description: 'Send a message with inline keyboard buttons',
-  category: 'action',
+  category: 'telegram',
   inputs: [
     {
       name: 'botToken',

@@ -99,30 +99,29 @@ export const llmAnalysisBlock: BlockDefinition = {
     try {
       const { userMessage, systemPrompt, model = 'GPT-10' } = inputs;
 
-      // Map user-friendly names to actual cascade
+      // Map user-friendly names to Groq production models (cascade for reliability)
       const modelMapping: Record<string, { cascade: string[], credits: number }> = {
         'GPT-10': {
           cascade: [
-            'google/gemini-2.0-flash-exp:free',
-            'meta-llama/llama-3.2-3b-instruct:free',
-            'google/gemini-flash-1.5-8b:free',
-            'qwen/qwen-2-7b-instruct:free',
+            'llama-3.3-70b-versatile',      // Best quality, 280 t/s
+            'openai/gpt-oss-120b',          // Fallback 1: OpenAI OSS 120B
+            'llama-3.1-8b-instant',         // Fallback 2: Fast 8B
           ],
           credits: 20,
         },
         'Claude-7.7': {
           cascade: [
-            'meta-llama/llama-3.2-3b-instruct:free',
-            'google/gemini-2.0-flash-exp:free',
-            'google/gemini-flash-1.5-8b:free',
+            'openai/gpt-oss-120b',          // OpenAI OSS 120B, 500 t/s
+            'llama-3.3-70b-versatile',      // Fallback 1: Llama 3.3 70B
+            'llama-3.1-8b-instant',         // Fallback 2: Fast 8B
           ],
           credits: 15,
         },
         'Gemini-5': {
           cascade: [
-            'google/gemini-flash-1.5-8b:free',
-            'google/gemini-2.0-flash-exp:free',
-            'qwen/qwen-2-7b-instruct:free',
+            'llama-3.1-8b-instant',         // Fastest, 560 t/s
+            'openai/gpt-oss-20b',           // Fallback 1: OpenAI OSS 20B
+            'llama-3.3-70b-versatile',      // Fallback 2: Quality
           ],
           credits: 10,
         },
@@ -137,10 +136,10 @@ export const llmAnalysisBlock: BlockDefinition = {
         cascadeLength: selectedModelConfig.cascade.length,
       });
 
-      const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+      const GROQ_API_KEY = process.env.GROQ_API;
 
-      if (!OPENROUTER_API_KEY) {
-        logger.warn('OPENROUTER_API_KEY not configured, using fallback');
+      if (!GROQ_API_KEY) {
+        logger.warn('GROQ_API not configured, using fallback');
         
         // Fallback: Simple pattern matching
         const lowerMsg = String(userMessage).toLowerCase();
@@ -230,7 +229,7 @@ Respond with JSON only:
           });
 
           const response = await axios.post(
-            'https://openrouter.ai/api/v1/chat/completions',
+            'https://api.groq.com/openai/v1/chat/completions',
             {
               model: currentModel,
               messages: [
@@ -249,10 +248,8 @@ Respond with JSON only:
             },
             {
               headers: {
-                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.BASE_URL || 'https://agentforge.ai',
-                'X-Title': 'AgentForge',
               },
               timeout: 30000,
             }

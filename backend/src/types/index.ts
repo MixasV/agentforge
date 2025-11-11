@@ -80,6 +80,12 @@ export interface ExecutionContext {
   userId: string;
   workflowId: string;
   envVars?: Record<string, string>;
+  edges?: WorkflowEdge[]; // For discovering connected tools in AI Agent
+  allNodes?: WorkflowNode[]; // For resolving tool blocks
+  triggerData?: any; // For trigger blocks
+  isWebhook?: boolean; // For webhook triggers
+  executor?: any; // For emitting tool node events (like n8n visual feedback)
+  executionId?: string; // For event emission
 }
 
 export interface X402Payment {

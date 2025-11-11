@@ -8,182 +8,299 @@ datasource db {
 }
 
 model User {
-  id                    String    @id @default(uuid())
-  telegramUserId        BigInt?   @unique @map("telegram_user_id")
-  walletAddress         String?   @unique @map("wallet_address") @db.VarChar(255)
-  sessionKeyPublic      String?   @map("session_key_public") @db.VarChar(255)
-  sessionKeyEncrypted   String?   @map("session_key_encrypted") @db.Text
-  email                 String?   @unique @db.VarChar(255)
-  emailVerified         Boolean   @default(false) @map("email_verified")
-  cdpWalletId           String?   @unique @map("cdp_wallet_id") @db.VarChar(255)
-  cdpUserId             String?   @unique @map("cdp_user_id") @db.VarChar(255)
-  loginMethod           String?   @map("login_method") @db.VarChar(50)
-  lastLoginAt           DateTime? @map("last_login_at")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid())
+  telegramUserId      BigInt?   @unique @map("telegram_user_id")
+  walletAddress       String?   @unique @map("wallet_address") @db.VarChar(255)
+  sessionKeyPublic    String?   @map("session_key_public") @db.VarChar(255)
+  sessionKeyEncrypted String?   @map("session_key_encrypted") @db.Text
+  email               String?   @unique @db.VarChar(255)
+  emailVerified       Boolean   @default(false) @map("email_verified")
+  cdpWalletId         String?   @unique @map("cdp_wallet_id") @db.VarChar(255)
+  cdpUserId           String?   @unique @map("cdp_user_id") @db.VarChar(255)
+  loginMethod         String?   @map("login_method") @db.VarChar(50)
+  lastLoginAt         DateTime? @map("last_login_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  credits               Credits?
-  settings              UserSettings?
-  workflows             Workflow[]
-  x402Transactions      X402Transaction[]
-  apiUsage              ApiUsage[]
-  blocks                Block[]
-  blockUsage            BlockUsage[]
+  credits          Credits?
+  settings         UserSettings?
+  workflows        Workflow[]
+  x402Transactions X402Transaction[]
+  apiUsage         ApiUsage[]
+  blocks           Block[]
+  blockUsage       BlockUsage[]
+  AIChatMessage    AIChatMessage[]
 
   @@map("users")
 }
 
 model Credits {
-  id              String    @id @default(uuid())
-  userId          String    @unique @map("user_id")
-  balance         BigInt    @default(0)
-  lastToppedUp    DateTime? @map("last_topped_up")
-  totalPaidUsd    Decimal   @default(0) @map("total_paid_usd") @db.Decimal(10, 2)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid())
+  userId       String    @unique @map("user_id")
+  balance      BigInt    @default(0)
+  lastToppedUp DateTime? @map("last_topped_up")
+  totalPaidUsd Decimal   @default(0) @map("total_paid_usd") @db.Decimal(10, 2)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("credits")
 }
 
 model X402Transaction {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-  amountUsd       Decimal   @map("amount_usd") @db.Decimal(10, 2)
-  creditsIssued   BigInt    @map("credits_issued")
-  txHash          String?   @unique @map("tx_hash") @db.VarChar(255)
-  status          String    @default("pending") @db.VarChar(50)
-  facilitator     String    @default("coinbase") @db.VarChar(50)
-  currency        String    @default("USDC") @db.VarChar(20)
-  tokenMint       String?   @map("token_mint") @db.VarChar(255)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  amountUsd     Decimal  @map("amount_usd") @db.Decimal(10, 2)
+  creditsIssued BigInt   @map("credits_issued")
+  txHash        String?  @unique @map("tx_hash") @db.VarChar(255)
+  status        String   @default("pending") @db.VarChar(50)
+  facilitator   String   @default("coinbase") @db.VarChar(50)
+  currency      String   @default("USDC") @db.VarChar(20)
+  tokenMint     String?  @map("token_mint") @db.VarChar(255)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("x402_transactions")
 }
 
 model Workflow {
-  id                String    @id @default(uuid())
-  userId            String    @map("user_id")
-  name              String    @db.VarChar(255)
-  description       String?   @db.Text
-  canvasJson        String    @map("canvas_json") @db.Text
-  isActive          Boolean   @default(false) @map("is_active")
-  activatedAt       DateTime? @map("activated_at")
-  deploymentType    String?   @map("deployment_type") @db.VarChar(50)
-  deploymentConfig  Json?     @map("deployment_config")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  lastExecutedAt    DateTime? @map("last_executed_at")
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  name             String    @db.VarChar(255)
+  description      String?   @db.Text
+  canvasJson       String    @map("canvas_json") @db.Text
+  isActive         Boolean   @default(false) @map("is_active")
+  activatedAt      DateTime? @map("activated_at")
+  deploymentType   String?   @map("deployment_type") @db.VarChar(50)
+  deploymentConfig Json?     @map("deployment_config")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  lastExecutedAt   DateTime? @map("last_executed_at")
 
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  executions        WorkflowExecution[]
-  triggers          TriggerRegistration[]
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions WorkflowExecution[]
+  triggers   TriggerRegistration[]
+
+  variables     WorkflowVariable[]
+  AIChatMessage AIChatMessage[]
 
   @@map("workflows")
 }
 
 model WorkflowExecution {
-  id                String    @id @default(uuid())
-  workflowId        String    @map("workflow_id")
-  status            String    @default("running") @db.VarChar(50)
-  inputData         Json?     @map("input_data")
-  outputData        Json?     @map("output_data")
-  errorMessage      String?   @map("error_message") @db.Text
-  executionTimeMs   Int?      @map("execution_time_ms")
-  apiCallsCount     Int       @default(0) @map("api_calls_count")
-  creditsUsed       BigInt    @default(0) @map("credits_used")
-  triggerType       String?   @map("trigger_type") @db.VarChar(50)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  completedAt       DateTime? @map("completed_at")
+  id              String    @id @default(uuid())
+  workflowId      String    @map("workflow_id")
+  status          String    @default("running") @db.VarChar(50)
+  inputData       Json?     @map("input_data")
+  outputData      Json?     @map("output_data")
+  errorMessage    String?   @map("error_message") @db.Text
+  executionTimeMs Int?      @map("execution_time_ms")
+  apiCallsCount   Int       @default(0) @map("api_calls_count")
+  creditsUsed     BigInt    @default(0) @map("credits_used")
+  triggerType     String?   @map("trigger_type") @db.VarChar(50)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
 
-  workflow          Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  blockUsage        BlockUsage[]
+  workflow   Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  blockUsage BlockUsage[]
 
   @@map("workflow_executions")
 }
 
 model ApiUsage {
-  id                String    @id @default(uuid())
-  userId            String    @map("user_id")
-  workflowId        String?   @map("workflow_id")
-  apiType           String    @map("api_type") @db.VarChar(100)
-  creditsCharged    BigInt    @map("credits_charged")
-  responseTimeMs    Int?      @map("response_time_ms")
-  status            String    @db.VarChar(50)
-  createdAt         DateTime  @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  workflowId     String?  @map("workflow_id")
+  apiType        String   @map("api_type") @db.VarChar(100)
+  creditsCharged BigInt   @map("credits_charged")
+  responseTimeMs Int?     @map("response_time_ms")
+  status         String   @db.VarChar(50)
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("api_usage")
 }
 
 model Block {
-  id                String    @id @default(uuid())
-  name              String    @db.VarChar(255)
-  description       String?   @db.Text
-  category          String    @db.VarChar(100)
-  blockConfig       Json      @map("block_config")
-  authorUserId      String?   @map("author_user_id")
-  isOfficial        Boolean   @default(false) @map("is_official")
-  downloadsCount    Int       @default(0) @map("downloads_count")
-  rating            Decimal?  @db.Decimal(3, 2)
-  githubUrl         String?   @map("github_url") @db.VarChar(500)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  name           String   @db.VarChar(255)
+  description    String?  @db.Text
+  category       String   @db.VarChar(100)
+  blockConfig    Json     @map("block_config")
+  authorUserId   String?  @map("author_user_id")
+  isOfficial     Boolean  @default(false) @map("is_official")
+  downloadsCount Int      @default(0) @map("downloads_count")
+  rating         Decimal? @db.Decimal(3, 2)
+  githubUrl      String?  @map("github_url") @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  author            User?     @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
-  blockUsage        BlockUsage[]
+  author     User?        @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  blockUsage BlockUsage[]
 
   @@map("blocks")
 }
 
 model BlockUsage {
-  id                      String    @id @default(uuid())
-  blockId                 String    @map("block_id")
-  workflowExecutionId     String    @map("workflow_execution_id")
-  authorId                String?   @map("author_id")
-  revenueSharePercent     Int?      @map("revenue_share_percent")
-  creditsPaid             BigInt    @default(0) @map("credits_paid")
-  createdAt               DateTime  @default(now()) @map("created_at")
+  id                  String   @id @default(uuid())
+  blockId             String   @map("block_id")
+  workflowExecutionId String   @map("workflow_execution_id")
+  authorId            String?  @map("author_id")
+  revenueSharePercent Int?     @map("revenue_share_percent")
+  creditsPaid         BigInt   @default(0) @map("credits_paid")
+  createdAt           DateTime @default(now()) @map("created_at")
 
-  block                   Block     @relation(fields: [blockId], references: [id], onDelete: Cascade)
-  workflowExecution       WorkflowExecution @relation(fields: [workflowExecutionId], references: [id], onDelete: Cascade)
-  author                  User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  block             Block             @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id], onDelete: Cascade)
+  author            User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@map("block_usage")
 }
 
 model UserSettings {
-  id                    String    @id @default(uuid())
-  userId                String    @unique @map("user_id")
-  telegramBotToken      String?   @map("telegram_bot_token") @db.Text
-  telegramBotUsername   String?   @map("telegram_bot_username") @db.VarChar(255)
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  telegramBotToken    String?  @map("telegram_bot_token") @db.Text
+  telegramBotUsername String?  @map("telegram_bot_username") @db.VarChar(255)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
 }
 
 model TriggerRegistration {
-  id                String    @id @default(uuid())
-  workflowId        String    @map("workflow_id")
-  triggerType       String    @map("trigger_type") @db.VarChar(50)
-  webhookUrl        String?   @map("webhook_url") @db.VarChar(500)
-  schedule          String?   @db.VarChar(255)
-  config            Json?
-  isActive          Boolean   @default(true) @map("is_active")
-  lastTriggeredAt   DateTime? @map("last_triggered_at")
-  triggerCount      Int       @default(0) @map("trigger_count")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  id              String    @id @default(uuid())
+  workflowId      String    @map("workflow_id")
+  triggerType     String    @map("trigger_type") @db.VarChar(50)
+  webhookUrl      String?   @map("webhook_url") @db.VarChar(500)
+  schedule        String?   @db.VarChar(255)
+  config          Json?
+  isActive        Boolean   @default(true) @map("is_active")
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  lastTriggerData Json?     @map("last_trigger_data")
+  triggerCount    Int       @default(0) @map("trigger_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  workflow          Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@map("trigger_registrations")
+}
+
+model SessionKeyRequest {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id") @db.VarChar(255)
+  chatId          String    @map("chat_id") @db.VarChar(255)
+  validUntil      DateTime  @map("valid_until")
+  maxTransactions Int       @default(100) @map("max_transactions")
+  maxAmountPerTx  BigInt    @map("max_amount_per_tx")
+  allowedPrograms String[]  @map("allowed_programs")
+  status          String    @default("pending_auth") @db.VarChar(50)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("session_key_requests")
+}
+
+model UserSession {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id") @db.VarChar(255)
+  sessionKeyPublic  String    @map("session_key_public") @db.VarChar(255)
+  sessionKeyPrivate String    @map("session_key_private") @db.Text
+  encryptionIV      String    @map("encryption_iv") @db.VarChar(255)
+  expiresAt         DateTime  @map("expires_at")
+  maxTransactions   Int       @default(100) @map("max_transactions")
+  maxAmountPerTx    BigInt    @map("max_amount_per_tx")
+  allowedPrograms   String[]  @map("allowed_programs")
+  status            String    @default("authorized") @db.VarChar(50)
+  isActive          Boolean   @default(true) @map("is_active")
+  transactionsUsed  Int       @default(0) @map("transactions_used")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  lastUsedAt        DateTime  @default(now()) @map("last_used_at")
+  revokedAt         DateTime? @map("revoked_at")
+  userIp            String?   @map("user_ip") @db.VarChar(100)
+  userAgent         String?   @map("user_agent") @db.VarChar(500)
+
+  transactions SessionTransaction[]
+
+  @@index([userId, isActive])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+model SessionTransaction {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  signature String   @db.VarChar(255)
+  amount    BigInt
+  fromToken String   @map("from_token") @db.VarChar(255)
+  toToken   String   @map("to_token") @db.VarChar(255)
+  success   Boolean
+  error     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("session_transactions")
+}
+
+model TelegramConversation {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id") @db.VarChar(255)
+  chatId        String   @map("chat_id") @db.VarChar(255)
+  workflowId    String?  @map("workflow_id") @db.VarChar(255)
+  currentState  String   @default("IDLE") @map("current_state") @db.VarChar(100)
+  stateData     Json?    @map("state_data")
+  lastMessageId Int?     @map("last_message_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, chatId])
+  @@index([userId])
+  @@index([workflowId])
+  @@index([currentState])
+  @@map("telegram_conversations")
+}
+
+model WorkflowVariable {
+  id          String   @id @default(uuid())
+  workflowId  String   @map("workflow_id")
+  key         String
+  value       String   @db.Text
+  description String?
+  isSecret    Boolean  @default(false) @map("is_secret")
+  isLocked    Boolean  @default(false) @map("is_locked")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, key])
+  @@map("workflow_variables")
+}
+
+model AIChatMessage {
+  id         String   @id @default(uuid())
+  workflowId String   @map("workflow_id")
+  userId     String   @map("user_id")
+  role       String // 'user' or 'assistant'
+  content    String   @db.Text
+  metadata   Json? // generated workflow, applied, etc
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, createdAt])
+  @@map("ai_chat_messages")
 }

@@ -108,13 +108,53 @@ export class WorkflowService {
       throw new AuthorizationError('You do not have access to this workflow');
     }
 
+    // IMPORTANT: Protect locked variables from being overwritten by canvas updates
+    let finalCanvasJson = data.canvasJson;
     if (data.canvasJson) {
       try {
         const canvas = JSON.parse(data.canvasJson) as WorkflowCanvas;
         if (!canvas.nodes || !Array.isArray(canvas.nodes) || !canvas.edges || !Array.isArray(canvas.edges)) {
           throw new Error('Invalid canvas structure');
         }
+
+        // Get locked variables for this workflow
+        const lockedVars = await prisma.workflowVariable.findMany({
+          where: {
+            workflowId,
+            isLocked: true,
+          },
+        });
+
+        // Restore locked variable values in canvas config
+        if (lockedVars.length > 0) {
+          canvas.nodes = canvas.nodes.map((node: any) => {
+            if (node.data && node.data.config) {
+              const newConfig = { ...node.data.config };
+              lockedVars.forEach(lockedVar => {
+                // If this node uses a locked variable, restore DB value
+                if (newConfig[lockedVar.key] !== undefined && lockedVar.value) {
+                  newConfig[lockedVar.key] = lockedVar.value;
+                }
+              });
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  config: newConfig,
+                },
+              };
+            }
+            return node;
+          });
+          finalCanvasJson = JSON.stringify(canvas);
+          logger.info('Protected locked variables in canvas update', {
+            workflowId,
+            lockedCount: lockedVars.length,
+            lockedKeys: lockedVars.map(v => v.key),
+          });
+        }
       } catch (error) {
+        logger.error('Failed to protect locked variables', error);
         throw new Error('Invalid canvasJson format');
       }
     }
@@ -124,7 +164,7 @@ export class WorkflowService {
       data: {
         ...(data.name && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
-        ...(data.canvasJson && { canvasJson: data.canvasJson }),
+        ...(finalCanvasJson && { canvasJson: finalCanvasJson }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
       },
     });

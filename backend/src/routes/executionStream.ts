@@ -8,11 +8,35 @@ const router = express.Router();
 const activeConnections = new Map<string, Response[]>();
 
 // SSE endpoint for real-time execution updates
+// Note: SSE doesn't support custom headers, so we accept token via query param
 router.get(
   '/:workflowId/executions/:executionId/stream',
-  authenticate,
   async (req: Request, res: Response) => {
     const { workflowId, executionId } = req.params;
+    const token = req.query.token as string;
+
+    // Validate token from query parameter
+    if (!token) {
+      logger.warn('SSE: No token provided', { workflowId, executionId });
+      res.status(401).json({ error: 'Unauthorized - token required' });
+      return;
+    }
+
+    // Verify JWT token manually (since EventSource can't send Authorization header)
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret-key-change-in-production');
+      if (!decoded || !decoded.userId) {
+        logger.warn('SSE: Invalid token payload', { workflowId, executionId });
+        res.status(401).json({ error: 'Invalid token' });
+        return;
+      }
+      logger.info('SSE: Token verified successfully', { userId: decoded.userId, workflowId, executionId });
+    } catch (error: any) {
+      logger.error('SSE: Token verification failed', { error: error.message, workflowId, executionId });
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
 
     logger.info('SSE connection established', { workflowId, executionId });
 

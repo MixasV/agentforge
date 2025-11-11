@@ -26,7 +26,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    allowedHosts: ['werpool.mixas.pro', 'localhost'],
+    allowedHosts: ['agent.mixas.pro', 'localhost'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

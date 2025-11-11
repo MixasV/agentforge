@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 export const setConversationStateBlock: BlockDefinition = {
   name: 'Set Conversation State',
   description: 'Set conversation state for a user',
-  category: 'action',
+  category: 'telegram',
   inputs: [
     {
       name: 'userId',

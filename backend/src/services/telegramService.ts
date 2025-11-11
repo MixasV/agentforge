@@ -38,6 +38,11 @@ export class TelegramService {
 
   async setWebhook(botToken: string, webhookUrl: string): Promise<{ success: boolean; description?: string }> {
     try {
+      // CRITICAL: Delete webhook first to clear pending updates
+      // This ensures old messages don't get delivered to new webhook
+      await this.deleteWebhook(botToken);
+      logger.info('🧹 Cleared old webhook and pending updates before setting new one');
+      
       const url = `${this.getApiUrl(botToken)}/setWebhook`;
       
       const response = await axios.post(url, {
@@ -105,6 +110,33 @@ export class TelegramService {
     } catch (error: any) {
       logger.error('Error getting webhook info', { error: error.message });
       return null;
+    }
+  }
+
+  async getUpdates(
+    botToken: string, 
+    options: { limit?: number; offset?: number; timeout?: number } = {}
+  ): Promise<any[]> {
+    try {
+      const url = `${this.getApiUrl(botToken)}/getUpdates`;
+      const params = {
+        limit: options.limit || 100,
+        offset: options.offset || 0,
+        timeout: options.timeout || 0,
+        allowed_updates: ['message', 'callback_query', 'edited_message'],
+      };
+
+      const response = await axios.get(url, { params });
+
+      if (response.data.ok) {
+        return response.data.result || [];
+      } else {
+        logger.error('Failed to get updates', { error: response.data.description });
+        return [];
+      }
+    } catch (error: any) {
+      logger.error('Error getting updates', { error: error.message });
+      return [];
     }
   }
 

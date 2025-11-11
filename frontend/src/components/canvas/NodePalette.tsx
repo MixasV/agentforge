@@ -13,6 +13,7 @@ const CATEGORY_ICONS = {
   action: Zap,
   logic: GitBranch,
   ai: Brain,
+  telegram: Send,
 };
 
 const CATEGORY_COLORS = {
@@ -21,6 +22,7 @@ const CATEGORY_COLORS = {
   action: 'text-red-400 bg-red-400/10',
   logic: 'text-yellow-400 bg-yellow-400/10',
   ai: 'text-purple-400 bg-purple-400/10',
+  telegram: 'text-cyan-400 bg-cyan-400/10',
 };
 
 interface NodePaletteProps {
@@ -49,7 +51,10 @@ export function NodePalette({ workflowId, onSave }: NodePaletteProps) {
       block.name.toLowerCase().includes(search.toLowerCase()) ||
       block.description.toLowerCase().includes(search.toLowerCase());
     
-    const matchesCategory = !categoryFilter || block.category === categoryFilter;
+    // Match by category OR tags (for blocks that should appear in multiple categories)
+    const matchesCategory = !categoryFilter || 
+      block.category === categoryFilter ||
+      (block.tags && block.tags.includes(categoryFilter));
     
     return matchesSearch && matchesCategory;
   });
@@ -201,6 +206,18 @@ export function NodePalette({ workflowId, onSave }: NodePaletteProps) {
                 title="AI - LLM and intelligent processing"
               >
                 <Sparkles size={13} />
+              </button>
+
+              <button
+                onClick={() => setCategoryFilter('telegram')}
+                className={`px-2 py-1 rounded transition-all ${
+                  categoryFilter === 'telegram'
+                    ? 'bg-cyan-500/20 border border-cyan-500 text-cyan-400'
+                    : 'bg-dark-bg border border-dark-border text-gray-400 hover:border-cyan-500 hover:text-cyan-400'
+                }`}
+                title="Telegram - Bot actions and messaging"
+              >
+                <Send size={13} />
               </button>
             </div>
           </div>

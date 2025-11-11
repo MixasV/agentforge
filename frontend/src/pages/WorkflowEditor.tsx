@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/services/api';
@@ -15,6 +15,7 @@ export function WorkflowEditor() {
   const navigate = useNavigate();
   const { setNodes, setEdges, clearWorkflow } = useWorkflowStore();
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
+  const [isWaitingForTrigger, setIsWaitingForTrigger] = useState(false);
   
   // Connect to execution stream for real-time updates
   useExecutionStream(id || '', currentExecutionId);
@@ -45,22 +46,7 @@ export function WorkflowEditor() {
     },
   });
 
-  const runMutation = useMutation({
-    mutationFn: async () => {
-      const response = await api.post(`/api/workflows/${id}/run`, {
-        inputs: {},
-      });
-      return response.data;
-    },
-    onSuccess: (data) => {
-      toast.success('Workflow executed successfully');
-      console.log('Execution result:', data);
-    },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || 'Workflow execution failed';
-      toast.error(message);
-    },
-  });
+  // Removed runMutation - using async/await two-step flow now
 
   useEffect(() => {
     if (workflowData?.data?.canvasJson) {
@@ -83,17 +69,57 @@ export function WorkflowEditor() {
     saveMutation.mutate({ nodes, edges });
   };
 
-  const handleRun = () => {
-    runMutation.mutate(undefined, {
-      onSuccess: (data: any) => {
-        // Set execution ID to start SSE stream
-        if (data?.data?.executionId) {
-          setCurrentExecutionId(data.data.executionId);
-          console.log('[WorkflowEditor] Execution started:', data.data.executionId);
-        }
+  const handleRun = async () => {
+    // Check if workflow has Telegram Trigger
+    const canvas = workflowData?.data?.canvasJson ? JSON.parse(workflowData.data.canvasJson) : { nodes: [] };
+    const hasTelegramTrigger = canvas.nodes?.some((node: any) => 
+      node.data?.type === 'telegram_trigger' || node.type === 'telegram_trigger'
+    );
+    
+    if (hasTelegramTrigger) {
+      setIsWaitingForTrigger(true);
+      toast.loading('⏳ Waiting for Telegram message... Send a message to your bot!', {
+        duration: 10000,
+        id: 'telegram-wait',
+      });
+    }
+
+    try {
+      // STEP 1: Create execution record and get executionId
+      const createResponse = await api.post(`/api/workflows/${id}/executions/create`);
+      const executionId = createResponse.data?.data?.executionId;
+      
+      if (!executionId) {
+        throw new Error('Failed to create execution');
+      }
+
+      console.log('[WorkflowEditor] Execution created:', executionId);
+
+      // STEP 2: Connect to SSE FIRST
+      setCurrentExecutionId(executionId);
+      
+      // STEP 3: Wait a bit for SSE to establish connection
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('[WorkflowEditor] SSE connected, starting workflow execution...');
+
+      // STEP 4: Start actual workflow execution
+      await api.post(`/api/workflows/${id}/executions/${executionId}/start`);
+      
+      if (!hasTelegramTrigger) {
         toast.success('Workflow execution started');
-      },
-    });
+      }
+
+      setTimeout(() => {
+        setIsWaitingForTrigger(false);
+        toast.dismiss('telegram-wait');
+      }, 2000);
+      
+    } catch (error: any) {
+      console.error('Workflow execution failed:', error);
+      setIsWaitingForTrigger(false);
+      toast.dismiss('telegram-wait');
+      toast.error(error.response?.data?.error || 'Workflow execution failed');
+    }
   };
 
   if (isLoading) {
@@ -129,7 +155,16 @@ export function WorkflowEditor() {
         />
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
+        {isWaitingForTrigger && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-blue-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+            <div>
+              <div className="font-semibold">Waiting for Telegram message...</div>
+              <div className="text-xs opacity-90">Send a message to your bot to execute workflow</div>
+            </div>
+          </div>
+        )}
         <WorkflowCanvas workflowId={id} onSave={handleSave} onRun={handleRun} />
       </div>
     </div>

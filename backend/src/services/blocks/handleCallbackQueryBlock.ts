@@ -5,7 +5,7 @@ import { telegramService } from '../telegramService';
 export const handleCallbackQueryBlock: BlockDefinition = {
   name: 'Handle Callback Query',
   description: 'Process button clicks from inline keyboards',
-  category: 'action',
+  category: 'telegram',
   inputs: [
     {
       name: 'botToken',

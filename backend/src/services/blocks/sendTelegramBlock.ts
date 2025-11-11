@@ -5,19 +5,19 @@ import { telegramService } from '../telegramService';
 export const sendTelegramBlock: BlockDefinition = {
   name: 'Send Telegram Message',
   description: 'Send a message via Telegram bot',
-  category: 'action',
+  category: 'telegram',
   inputs: [
     {
       name: 'botToken',
       type: 'string',
-      required: true,
-      description: 'Telegram Bot Token from @BotFather',
+      required: false,
+      description: 'Telegram Bot Token from @BotFather (auto-filled from $context or environment)',
     },
     {
       name: 'chatId',
       type: 'string',
-      required: true,
-      description: 'Telegram chat ID',
+      required: false,
+      description: 'Telegram chat ID (auto-filled from $context - Telegram Trigger)',
     },
     {
       name: 'message',
@@ -52,24 +52,35 @@ export const sendTelegramBlock: BlockDefinition = {
   creditsCost: 0,
   execute: async (inputs) => {
     try {
-      const { botToken, chatId, message, parseMode = 'HTML' } = inputs;
+      // Extract values with $context fallback
+      const $context = (inputs as any).$context || {};
+      
+      const botToken = inputs.botToken || $context.botToken;
+      const chatId = inputs.chatId || $context.chatId;
+      const message = inputs.message;
+      const parseMode = inputs.parseMode || 'Markdown'; // Markdown by default (AI agents use ** for bold, _ for italic)
 
       // Validation
       if (!botToken || String(botToken).trim() === '') {
-        throw new Error('Bot Token is required. Get it from @BotFather in Telegram.');
+        throw new Error('Bot Token is required. Provide it in block config, connect to Telegram Trigger, or set TELEGRAM_BOT_TOKEN in environment.');
       }
 
       if (!chatId || String(chatId).trim() === '') {
-        throw new Error('Chat ID is required. Use your Telegram user ID or channel username.');
+        throw new Error('Chat ID is required. Provide it in block config or connect to Telegram Trigger to use sender chat automatically.');
       }
 
       if (!message || String(message).trim() === '') {
         throw new Error('Message text is required. Cannot send empty message.');
       }
 
-      // Validate bot token format
-      if (!String(botToken).match(/^\d+:[A-Za-z0-9_-]{35}$/)) {
-        throw new Error('Invalid Bot Token format. Expected format: "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"');
+      // Validate bot token format (skip if it's a template reference)
+      const tokenStr = String(botToken);
+      if (tokenStr.includes('{{') && tokenStr.includes('}}')) {
+        throw new Error(`Bot Token contains unresolved reference: ${tokenStr}. Make sure the variable is set correctly.`);
+      }
+      
+      if (!tokenStr.match(/^\d+:[A-Za-z0-9_-]{35}$/)) {
+        throw new Error(`Invalid Bot Token format. Got: "${tokenStr}". Expected format: "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"`);
       }
 
       logger.info('Sending Telegram message', { 

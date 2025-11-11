@@ -39,14 +39,14 @@ interface AgentMessage {
  */
 export const aiAgentBlock: BlockDefinition = {
   name: 'AI Agent',
-  description: 'AI Agent with tool calling capabilities - like n8n AI Agent. Can use connected blocks as tools to perform actions.',
+  description: 'Autonomous AI Agent that can use ANY block as a tool. Like n8n AI Agent - makes intelligent decisions, calls tools, and orchestrates complex workflows.',
   category: 'ai',
   inputs: [
     {
-      name: 'prompt',
+      name: 'userMessage',
       type: 'string',
       required: true,
-      description: 'User message/prompt for the AI agent',
+      description: 'User message/input for the AI agent',
     },
     {
       name: 'systemMessage',
@@ -58,29 +58,29 @@ export const aiAgentBlock: BlockDefinition = {
       name: 'chatId',
       type: 'string',
       required: false,
-      description: 'Telegram chat ID (for send_telegram tool)',
+      description: 'Telegram chat ID (auto-filled from Telegram Trigger)',
     },
     {
       name: 'botToken',
       type: 'string',
       required: false,
-      description: 'Telegram bot token (for send_telegram tool)',
+      description: 'Telegram bot token (auto-filled from environment)',
     },
     {
       name: 'enabledTools',
       type: 'string',
       required: false,
-      description: 'Comma-separated list of enabled tools: send_telegram,get_token_info',
+      description: 'Comma-separated list of tools: send_telegram,jupiter_quote,pump_fun_data OR use wildcards: data* (all data blocks), action* (all action blocks), all (all blocks)',
     },
     {
       name: 'model',
       type: 'select',
       required: false,
-      description: 'AI Model (default: gpt-4o-mini)',
+      description: 'AI Model (default: GPT-10)',
       options: [
-        { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Fast, 15 credits)' },
-        { value: 'gpt-4o', label: 'GPT-4o (Smart, 30 credits)' },
-        { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash (Fast, 10 credits)' },
+        { value: 'GPT-10', label: 'GPT-10 (Smart, 20 credits)' },
+        { value: 'Claude-7.7', label: 'Claude-7.7 (Balanced, 15 credits)' },
+        { value: 'Gemini-5', label: 'Gemini-5 (Fast, 10 credits)' },
       ],
     },
     {
@@ -117,23 +117,50 @@ export const aiAgentBlock: BlockDefinition = {
   execute: async (inputs, context) => {
     try {
       const {
-        prompt,
+        userMessage,
+        prompt = userMessage, // backward compatibility with old workflows
         systemMessage = 'You are a helpful AI assistant. Use available tools to help the user.',
         chatId,
         botToken,
         enabledTools = 'send_telegram,get_token_info',
-        model = 'gpt-4o-mini',
+        model = 'GPT-10',
         maxIterations = 5,
       } = inputs;
 
+      // VISUAL TOOL CONNECTION: Check if tools are connected via edges
+      let toolsList: string[] = [];
+      
+      if (context?.edges && context?.allNodes) {
+        // Find current AI Agent node
+        const currentNode = context.allNodes.find(n => n.data.type === 'ai_agent');
+        
+        if (currentNode) {
+          // Get visually connected tools (edges with targetHandle='tool')
+          const connectedTools = context.edges
+            .filter(edge => edge.target === currentNode.id && edge.targetHandle === 'tool')
+            .map(edge => context.allNodes?.find(n => n.id === edge.source))
+            .filter(Boolean);
+          
+          if (connectedTools.length > 0) {
+            toolsList = connectedTools.map(n => n!.data.type);
+            logger.info(`🔌 AI Agent using ${connectedTools.length} visually connected tools`, { tools: toolsList });
+          } else {
+            toolsList = String(enabledTools).split(',').map(t => t.trim()).filter(Boolean);
+            logger.info('📝 AI Agent using text-based tools (no visual connections)', { tools: toolsList });
+          }
+        } else {
+          toolsList = String(enabledTools).split(',').map(t => t.trim()).filter(Boolean);
+        }
+      } else {
+        toolsList = String(enabledTools).split(',').map(t => t.trim()).filter(Boolean);
+      }
+
       logger.info('AI Agent started', { 
         model, 
-        enabledTools,
-        hasPrompt: !!prompt 
+        toolsCount: toolsList.length,
+        hasPrompt: !!prompt,
+        userMessage: String(userMessage || prompt).substring(0, 100),
       });
-
-      // Parse enabled tools
-      const toolsList = String(enabledTools).split(',').map(t => t.trim()).filter(Boolean);
 
       // Register available tools
       const tools = registerTools(toolsList, { chatId, botToken }, context);
@@ -143,19 +170,32 @@ export const aiAgentBlock: BlockDefinition = {
       }
 
       // Get API key
-      const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-      if (!OPENROUTER_API_KEY) {
-        throw new Error('OPENROUTER_API_KEY not configured in environment variables');
+      const GROQ_API_KEY = process.env.GROQ_API;
+      if (!GROQ_API_KEY) {
+        throw new Error('GROQ_API not configured in environment variables');
       }
 
-      // Map model names to OpenRouter format
-      const modelMapping: Record<string, string> = {
-        'gpt-4o-mini': 'openai/gpt-4o-mini',
-        'gpt-4o': 'openai/gpt-4o',
-        'gemini-2.0-flash-exp': 'google/gemini-2.0-flash-exp:free',
+      // Map user-friendly names to Groq production models (with fallback cascade)
+      const modelMapping: Record<string, string[]> = {
+        'GPT-10': [
+          'llama-3.3-70b-versatile',      // Best quality, tool calling
+          'openai/gpt-oss-120b',          // Fallback 1
+          'llama-3.1-8b-instant',         // Fallback 2
+        ],
+        'Claude-7.7': [
+          'openai/gpt-oss-120b',          // OpenAI OSS
+          'llama-3.3-70b-versatile',      // Fallback 1
+          'llama-3.1-8b-instant',         // Fallback 2
+        ],
+        'Gemini-5': [
+          'llama-3.1-8b-instant',         // Fastest
+          'openai/gpt-oss-20b',           // Fallback 1
+          'llama-3.3-70b-versatile',      // Fallback 2
+        ],
       };
 
-      const actualModel = modelMapping[String(model)] || 'openai/gpt-4o-mini';
+      const modelCascade = modelMapping[String(model)] || modelMapping['GPT-10'];
+      const actualModel = modelCascade[0]; // Use first model in cascade
 
       // Initialize conversation
       const messages: AgentMessage[] = [
@@ -178,13 +218,29 @@ export const aiAgentBlock: BlockDefinition = {
         
         logger.info(`Agent iteration ${iterations}/${maxIterations}`);
 
-        // Call LLM with tools
-        const response = await callLLMWithTools(
-          actualModel,
-          messages,
-          tools,
-          OPENROUTER_API_KEY
-        );
+        // Call LLM with tools (with cascade fallback)
+        let response;
+        let lastError;
+        
+        for (const modelToTry of modelCascade) {
+          try {
+            response = await callLLMWithTools(
+              modelToTry,
+              messages,
+              tools,
+              GROQ_API_KEY
+            );
+            break; // Success!
+          } catch (error: any) {
+            lastError = error;
+            logger.warn(`Model ${modelToTry} failed, trying next`, { error: error.message });
+            continue;
+          }
+        }
+        
+        if (!response) {
+          throw new Error(`All models in cascade failed: ${lastError?.message}`);
+        }
 
         // Add assistant message to history
         messages.push(response.message);
@@ -215,7 +271,36 @@ export const aiAgentBlock: BlockDefinition = {
             }
 
             try {
+              // Emit tool node started event (for visual feedback like n8n)
+              if (context.executor) {
+                const toolNodeId = context.allNodes?.find(n => n.data.type === toolName)?.id;
+                if (toolNodeId) {
+                  context.executor.emit('nodeStarted', {
+                    executionId: context.executionId,
+                    nodeId: toolNodeId,
+                    nodeType: toolName,
+                    timestamp: new Date().toISOString(),
+                  });
+                }
+              }
+
+              const toolStartTime = Date.now();
               const toolResult = await tool.execute(toolArgs, context);
+              
+              // Emit tool node completed event
+              if (context.executor) {
+                const toolNodeId = context.allNodes?.find(n => n.data.type === toolName)?.id;
+                if (toolNodeId) {
+                  context.executor.emit('nodeCompleted', {
+                    executionId: context.executionId,
+                    nodeId: toolNodeId,
+                    nodeType: toolName,
+                    output: toolResult,
+                    duration: Date.now() - toolStartTime,
+                    timestamp: new Date().toISOString(),
+                  });
+                }
+              }
               
               // Add tool result to conversation
               messages.push({
@@ -228,6 +313,22 @@ export const aiAgentBlock: BlockDefinition = {
               logger.info(`Tool ${toolName} executed successfully`);
             } catch (error: any) {
               logger.error(`Tool ${toolName} failed`, error);
+              
+              // Emit tool node failed event
+              if (context.executor) {
+                const toolNodeId = context.allNodes?.find(n => n.data.type === toolName)?.id;
+                if (toolNodeId) {
+                  context.executor.emit('nodeFailed', {
+                    executionId: context.executionId,
+                    nodeId: toolNodeId,
+                    nodeType: toolName,
+                    error: error.message,
+                    duration: 0,
+                    timestamp: new Date().toISOString(),
+                  });
+                }
+              }
+              
               messages.push({
                 role: 'tool',
                 tool_call_id: toolCall.id,
@@ -277,6 +378,11 @@ export const aiAgentBlock: BlockDefinition = {
 
 /**
  * Register available tools for the agent
+ * 
+ * NEW APPROACH: Universal tool registration
+ * - Instead of hardcoded tools, dynamically create tools from any block
+ * - Allows AI Agent to use ANY block as a tool (Jupiter, Pump.fun, Helius, etc.)
+ * - Automatically maps block inputs to tool parameters
  */
 function registerTools(
   toolsList: string[],
@@ -285,51 +391,106 @@ function registerTools(
 ): AITool[] {
   const tools: AITool[] = [];
 
-  // Tool: Send Telegram Message
-  if (toolsList.includes('send_telegram')) {
-    tools.push({
-      name: 'send_telegram',
-      description: 'Send a message to Telegram chat. Use this when you need to respond to the user or send any information to Telegram.',
+  // Get all available blocks
+  const { BLOCKS_REGISTRY } = require('./index');
+
+  // Parse tools list - can be:
+  // 1. Specific blocks: "send_telegram,jupiter_quote"
+  // 2. Category wildcards: "data*" (all data blocks)
+  // 3. "all" (all non-trigger blocks)
+  const enableAllDataBlocks = toolsList.includes('data*') || toolsList.includes('all');
+  const enableAllActionBlocks = toolsList.includes('action*') || toolsList.includes('all');
+
+  // Register tools from BLOCKS_REGISTRY
+  Object.entries(BLOCKS_REGISTRY).forEach(([blockType, blockDef]: [string, any]) => {
+    // Skip trigger blocks (they can't be used as tools)
+    if (blockDef.category === 'trigger') {
+      return;
+    }
+
+    // Check if this block should be enabled
+    const shouldEnable = 
+      toolsList.includes(blockType) || 
+      toolsList.includes('all') ||
+      (enableAllDataBlocks && blockDef.category === 'data') ||
+      (enableAllActionBlocks && blockDef.category === 'action');
+
+    if (!shouldEnable) {
+      return;
+    }
+
+    // Build tool from block definition
+    const tool: AITool = {
+      name: blockType,
+      description: blockDef.description || `Execute ${blockDef.name} block`,
       parameters: {
         type: 'object',
-        properties: {
-          chat_id: {
-            type: 'string',
-            description: 'Telegram chat ID to send message to',
-          },
-          message: {
-            type: 'string',
-            description: 'Message text to send',
-          },
-        },
-        required: ['message'],
+        properties: {},
+        required: [],
       },
       execute: async (params) => {
-        const { sendTelegramBlock } = await import('./sendTelegramBlock');
+        // Auto-fill botToken from multiple sources (priority order)
+        let resolvedBotToken = 
+          params.botToken || 
+          config.botToken || 
+          context.envVars?.TELEGRAM_BOT_TOKEN;
         
-        // Use chat_id from params or config
-        const chatId = params.chat_id || config.chatId;
-        const botToken = config.botToken || context.envVars?.TELEGRAM_BOT_TOKEN;
+        // If still no token, try to get from Telegram Trigger output
+        if (!resolvedBotToken && context.nodeOutputs) {
+          const triggerOutput = Object.values(context.nodeOutputs).find((output: any) => output?.botToken);
+          if (triggerOutput) {
+            resolvedBotToken = (triggerOutput as any).botToken;
+          }
+        }
+        
+        // Merge params with config context (chatId, botToken, etc.)
+        const inputs = {
+          ...params,
+          chatId: params.chatId || params.chat_id || config.chatId,
+          botToken: resolvedBotToken,
+        };
 
-        if (!chatId) {
-          throw new Error('chat_id is required for send_telegram tool');
+        // Execute the block
+        if (!blockDef.execute) {
+          throw new Error(`Block ${blockType} does not have execute function`);
         }
 
-        if (!botToken) {
-          throw new Error('botToken is required for send_telegram tool');
-        }
-
-        return await sendTelegramBlock.execute!({
-          botToken,
-          chatId,
-          message: params.message,
-          parseMode: 'Markdown',
-        }, context);
+        return await blockDef.execute(inputs, context);
       },
-    });
-  }
+    };
 
-  // Tool: Get Solana Token Info
+    // Build parameters schema from block inputs
+    blockDef.inputs.forEach((input: any) => {
+      // Skip inputs that are auto-filled from context
+      const autoFilledInputs = ['botToken', 'chatId'];
+      if (autoFilledInputs.includes(input.name)) {
+        // Make optional since we auto-fill from context
+        tool.parameters.properties[input.name] = {
+          type: mapTypeToJsonSchema(input.type),
+          description: `${input.description || input.name} (auto-filled from context if not provided)`,
+        };
+        return;
+      }
+
+      tool.parameters.properties[input.name] = {
+        type: mapTypeToJsonSchema(input.type),
+        description: input.description || input.name,
+      };
+
+      if (input.required) {
+        tool.parameters.required.push(input.name);
+      }
+    });
+
+    tools.push(tool);
+    logger.debug(`Registered AI tool: ${blockType}`, {
+      category: blockDef.category,
+      creditsCost: blockDef.creditsCost,
+    });
+  });
+
+  // LEGACY: Hardcoded get_token_info (DexScreener API)
+  // This is NOT a block, but a custom tool
   if (toolsList.includes('get_token_info')) {
     tools.push({
       name: 'get_token_info',
@@ -379,7 +540,26 @@ function registerTools(
     });
   }
 
+  logger.info(`AI Agent registered ${tools.length} tools`, {
+    tools: tools.map(t => t.name),
+  });
+
   return tools;
+}
+
+/**
+ * Map block input type to JSON Schema type
+ */
+function mapTypeToJsonSchema(blockType: string): string {
+  const typeMap: Record<string, string> = {
+    string: 'string',
+    number: 'number',
+    boolean: 'boolean',
+    array: 'array',
+    object: 'object',
+    select: 'string',
+  };
+  return typeMap[blockType] || 'string';
 }
 
 /**
@@ -426,14 +606,12 @@ async function callLLMWithTools(
   });
 
   const response = await axios.post(
-    'https://openrouter.ai/api/v1/chat/completions',
+    'https://api.groq.com/openai/v1/chat/completions',
     payload,
     {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.BASE_URL || 'http://localhost:3001',
-        'X-Title': 'AgentForge AI Agent',
       },
       timeout: 60000,
     }

@@ -5,7 +5,7 @@ import { telegramService } from '../telegramService';
 export const editTelegramMessageBlock: BlockDefinition = {
   name: 'Edit Telegram Message',
   description: 'Edit an existing Telegram message',
-  category: 'action',
+  category: 'telegram',
   inputs: [
     {
       name: 'botToken',

@@ -5,7 +5,7 @@ import { telegramService } from '../telegramService';
 export const sendChatActionBlock: BlockDefinition = {
   name: 'Send Chat Action',
   description: 'Shows typing indicator or other chat action to user',
-  category: 'action',
+  category: 'telegram',
   inputs: [
     {
       name: 'botToken',

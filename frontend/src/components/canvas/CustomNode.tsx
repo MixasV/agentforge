@@ -109,6 +109,17 @@ export const CustomNode = memo(({ data, selected, id }: NodeProps) => {
         position={Position.Left}
         className="!bg-gray-400 !w-1.5 !h-1.5 !border-0"
       />
+      
+      {/* Tool handle for AI Agent - connects tools visually */}
+      {data.type === 'ai_agent' && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="tool"
+          className="!bg-purple-400 !w-2 !h-2 !border-2 !border-dark-card"
+          style={{ left: '50%', transform: 'translateX(-50%)' }}
+        />
+      )}
 
       <div className="flex items-start gap-1.5">
         <div className={clsx('p-1 rounded', styles.iconBg)}>
@@ -136,11 +147,23 @@ export const CustomNode = memo(({ data, selected, id }: NodeProps) => {
         </div>
       </div>
 
+      {/* Source handle - right for normal flow */}
       <Handle
         type="source"
         position={Position.Right}
         className="!bg-gray-400 !w-1.5 !h-1.5 !border-0"
       />
+      
+      {/* Source handle - bottom for tool connections (non-trigger blocks can be tools) */}
+      {category !== 'trigger' && data.type !== 'ai_agent' && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="tool-out"
+          className="!bg-purple-400 !w-2 !h-2 !border-2 !border-dark-card"
+          style={{ left: '50%', transform: 'translateX(-50%)' }}
+        />
+      )}
     </div>
   );
 });

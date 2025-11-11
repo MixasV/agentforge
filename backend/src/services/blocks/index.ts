@@ -1,5 +1,6 @@
 import { BlockDefinition } from '../../types';
-import { jupiterQuoteBlock } from './jupiterQuoteBlock';
+import { jupiterTokenInfoBlock } from './jupiterTokenInfoBlock';
+import { jupiterSwapQuoteBlock } from './jupiterSwapQuoteBlock';
 import { pumpFunDataBlock } from './pumpFunDataBlock';
 import { heliusBalanceBlock } from './heliusBalanceBlock';
 import { llmAnalysisBlock } from './llmAnalysisBlock';
@@ -34,7 +35,8 @@ export const BLOCKS_REGISTRY: Record<string, BlockDefinition> = {
   webhook_trigger: webhookTriggerBlock,
   
   // Solana & Trading
-  jupiter_quote: jupiterQuoteBlock,
+  jupiter_token_info: jupiterTokenInfoBlock,
+  jupiter_swap_quote: jupiterSwapQuoteBlock,
   pump_fun_data: pumpFunDataBlock,
   helius_balance: heliusBalanceBlock,
   solana_account_info: solanaAccountInfoBlock,

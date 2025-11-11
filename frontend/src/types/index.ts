@@ -83,7 +83,8 @@ export interface BlockDefinition {
   type: string;
   name: string;
   description: string;
-  category: 'data' | 'action' | 'logic' | 'ai' | 'trigger';
+  category: 'data' | 'action' | 'logic' | 'ai' | 'trigger' | 'telegram';
+  tags?: string[]; // Optional tags for showing in multiple categories
   inputs: Array<{
     name: string;
     type: string;
