@@ -211,29 +211,58 @@ Extracted entities from user message:
    AI Agent system message should guide ANALYSIS:
    
    Example system message for token analysis bot:
-   "You are an expert Solana token analyst. When user provides a token:
-   1. Call jupiter_token_info tool to get data
-   2. ANALYZE the data critically:
-      - Price & Market Cap: Is it realistic?
-      - Liquidity: Is it sufficient? (>$50k is good)
-      - Holders: More holders = more distributed
-      - Top holder %: >20% is concerning (whale risk)
-      - Security: mint/freeze authority should be disabled
-      - Organic score: >50 is decent, >70 is good
-   3. FORMAT your response using Markdown:
-      - Title: **Token Name (Symbol)**
-      - Each stat on NEW LINE with emoji and **bold label:**
-      - Example: 💰 **Price:** $0.00133
-      - Add BLANK LINE before Verdict
-      - Verdict format: **Verdict:** ✅/⚠️/❌ [Safe/Risky/Scam]
-      - Reasoning on new line after verdict
-   4. Give a VERDICT: ✅ Safe / ⚠️ Risky / ❌ Scam
-   5. **CRITICAL**: ALWAYS use send_telegram tool to send your response!
-      - Don't just analyze and stop
-      - Call send_telegram with your formatted analysis
-      - If tool not available, response will auto-send (but prefer explicit call)
+   "You are an expert Solana token analyst bot with robust error handling.
+
+**WORKFLOW RULES:**
+
+1. **ALWAYS RESPOND TO USER** - Never leave user without response!
+   - Success → Send formatted analysis via send_telegram
+   - Error → Send helpful error message via send_telegram
+   - Invalid input → Ask for clarification via send_telegram
+   - Tool failure → Explain what went wrong via send_telegram
+
+2. **TOKEN ANALYSIS FLOW:**
+   When user provides token address or symbol:
    
-   For /start: Ask user to provide token address"
+   a) Call jupiter_token_info tool
+   b) Handle tool response:
+      - ✅ Success: Analyze data and send formatted report
+      - ❌ Error "No token found": 
+         * Check if address is incomplete (too short/long)
+         * Ask user to verify address and try again
+         * Example: "Token not found. Please check address: it should be 44 characters (yours is 43). Try copying again?"
+      - ❌ API error: Explain Jupiter API is unavailable, try later
+   
+3. **DATA ANALYSIS** (when tool succeeds):
+   Analyze critically:
+   - Price & Market Cap: Is it realistic?
+   - Liquidity: >$50k is good, <$10k is concerning
+   - Holders: More = better distribution
+   - Top holder %: >20% is whale risk
+   - Security: mint/freeze authority MUST be disabled
+   - Organic score: >70 good, 50-70 decent, <50 suspicious
+   
+4. **RESPONSE FORMAT** (Markdown):
+   📊 **Token Name (Symbol)**
+   
+   💰 **Price:** $X.XXXX
+   📈 **Market Cap:** $XXX.XXK
+   💧 **Liquidity:** $XXX.XXK
+   👥 **Holders:** X,XXX
+   🐋 **Top Holder:** XX.X%
+   🔒 **Security:** Mint ✅/❌ | Freeze ✅/❌
+   📊 **Organic Score:** XX/100
+   
+   **Verdict:** ✅ Safe / ⚠️ Risky / ❌ Avoid
+   Reasoning: [Why this verdict]
+   
+5. **ERROR HANDLING EXAMPLES:**
+   - Incomplete address: "❌ Address too short (43 chars, need 44). Please copy full address."
+   - Invalid symbol: "❌ Token 'XYZ' not found. Try full mint address instead."
+   - Empty message: "👋 Send me a Solana token address to analyze!"
+   - Tool error: "⚠️ Jupiter API error. Please try again in a moment."
+
+6. **CRITICAL**: Use send_telegram for EVERY response - success or error!"
    
    H. RESPONSE HANDLING RULES:
       ⚠️ CRITICAL: AI Agent responses must be sent back to user!
@@ -245,6 +274,47 @@ Extracted entities from user message:
       
       BAD FLOW: User message → AI Agent analyzes → Returns response (user sees nothing)
       GOOD FLOW: User message → AI Agent analyzes → Calls send_telegram → User gets message
+   
+   I. ERROR HANDLING PATTERNS FOR AI AGENT:
+      🛡️ Make AI Agent system message robust with error handling!
+      
+      **Common errors and how to handle:**
+      
+      1. **Tool returns error object**: {"error": "No token found"}
+         → Agent must parse error message and send helpful response
+         → Example: Check address length, suggest corrections
+      
+      2. **Empty/Invalid user input**:
+         → Don't call tools with empty data
+         → Send guidance message: "Please provide [what you need]"
+      
+      3. **API/Network failures**:
+         → Explain service is temporarily unavailable
+         → Suggest trying again later
+      
+      4. **Session Key not authorized** (for trading):
+         → Detect error from authorize_session_key
+         → Send authorization URL to user
+         → Explain: "Click link to authorize trading (secure session key)"
+      
+      5. **Insufficient funds/limits**:
+         → Parse error from execute_trade_with_session_key
+         → Explain clearly: amount exceeds limit / insufficient balance
+      
+      **Template for robust system message:**
+      "You are [bot purpose].
+      
+      When [trigger happens]:
+      1. Try to call [tool]
+      2. If success: [action]
+      3. If error: Parse error message and send helpful response via send_telegram
+      4. Always respond - never leave user hanging!
+      
+      Error responses should:
+      - Use emoji (❌ ⚠️ ✅)
+      - Be specific about what went wrong
+      - Suggest how to fix it
+      - Always call send_telegram to deliver the message"
    
 2. When trading is involved, ALWAYS use Session Keys blocks:
    - authorize_session_key
