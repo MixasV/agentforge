@@ -369,21 +369,37 @@ export class TelegramService {
     userId: string;
     userName?: string;
     messageId: number;
+    callbackData?: string;
+    callbackQueryId?: string;
   } | null {
     try {
-      if (!update.message || !update.message.text) {
-        return null;
+      // Handle regular message
+      if (update.message && update.message.text) {
+        const message: TelegramMessage = update.message;
+        return {
+          messageText: message.text || '',
+          chatId: message.chat.id.toString(),
+          userId: message.from.id.toString(),
+          userName: message.from.username,
+          messageId: message.message_id,
+        };
       }
 
-      const message: TelegramMessage = update.message;
+      // Handle callback_query (button click)
+      if (update.callback_query) {
+        const cbq = update.callback_query;
+        return {
+          messageText: cbq.data || '', // callback_data as message
+          chatId: cbq.message?.chat.id.toString() || cbq.from.id.toString(),
+          userId: cbq.from.id.toString(),
+          userName: cbq.from.username,
+          messageId: cbq.message?.message_id || 0,
+          callbackData: cbq.data,
+          callbackQueryId: cbq.id,
+        };
+      }
 
-      return {
-        messageText: message.text || '',
-        chatId: message.chat.id.toString(),
-        userId: message.from.id.toString(),
-        userName: message.from.username,
-        messageId: message.message_id,
-      };
+      return null;
     } catch (error) {
       logger.error('Failed to parse Telegram update', { error });
       return null;
