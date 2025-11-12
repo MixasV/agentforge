@@ -64,7 +64,9 @@ export const sendTelegramInlineKeyboardBlock: BlockDefinition = {
       
       if (typeof buttons === 'string') {
         try {
-          keyboard = JSON.parse(buttons as string);
+          // Fix single quotes to double quotes (common LLM mistake)
+          const fixedButtons = (buttons as string).replace(/'/g, '"');
+          keyboard = JSON.parse(fixedButtons);
         } catch (e) {
           throw new Error('Invalid buttons JSON format. Expected: [[{text:"Button",callback_data:"data"}]]');
         }
