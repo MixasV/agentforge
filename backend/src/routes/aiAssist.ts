@@ -208,6 +208,39 @@ Extracted entities from user message:
       - Simple Q&A: just send_telegram
       - Interactive Q&A: send_telegram_inline_keyboard + handle_callback_query
    
+   H. SESSION KEY TRADING FLOW (CRITICAL FOR TRADING BOTS):
+      When building trading bots, system message MUST enforce this exact sequence:
+      
+      STEP 1: Get quote
+        - Call jupiter_swap_quote(inputMint, outputMint, amount)
+        - inputMint/outputMint: FULL 44-char addresses (So11111... NOT "SOL")
+        - amount: RAW units with decimals (100000 = 0.0001 SOL)
+      
+      STEP 2: Ask confirmation with buttons
+        - Call send_telegram_inline_keyboard
+        - buttons format: "[[{\\"text\\":\\"Yes\\",\\"callback_data\\":\\"confirm\\"},{\\"text\\":\\"No\\",\\"callback_data\\":\\"cancel\\"}]]"
+        - IMPORTANT: Double quotes with escaping, NOT single quotes!
+      
+      STEP 3: When user clicks button (callback_data = "confirm"):
+        a) FIRST: Call authorize_session_key(userId, chatId)
+        b) Check response.isAuthorized:
+           - If FALSE and response.authUrl exists: Send authUrl to user, STOP
+           - If TRUE: Continue to step c
+        c) Call execute_trade_with_session_key(userId, fromToken, toToken, amount)
+        d) Send result message
+      
+      NEVER SKIP STEP 3a! Always authorize_session_key before execute_trade!
+   
+   I. ERROR HANDLING PATTERNS FOR AI AGENT:
+      System message should include error recovery:
+      
+      "If tool returns error:
+       - address validation errors → ask user to verify address format
+       - 'No active session' → means need to call authorize_session_key first
+       - 'Token not found' → ask user to check symbol/address
+       - Rate limit/API errors → suggest retry later
+       - ALWAYS send error explanation via send_telegram (never leave user hanging)"
+   
    AI Agent system message should guide ANALYSIS:
    
    Example system message for token analysis bot:
