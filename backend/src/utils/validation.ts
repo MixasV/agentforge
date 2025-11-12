@@ -44,5 +44,12 @@ export const workflowRunSchema = z.object({
 });
 
 export const prepaymentSchema = z.object({
-  amountUsd: z.number().min(10).max(1000),
+  amountUsd: z.number().min(1).max(10000),
+  currency: z.string().optional(),
+  autoRecharge: z.object({
+    enabled: z.boolean(),
+    threshold: z.number().min(0),
+    amount: z.number().min(1),
+    currency: z.string(),
+  }).optional(),
 });
