@@ -409,7 +409,10 @@ ${getTradingBotPrompt()}
 Explain to user:
 - What commands bot will understand
 - Session Key security benefits
-- Setup steps
+- Setup steps: 
+  * Create bot via @BotFather in Telegram (https://t.me/BotFather)
+  * Get bot token from BotFather
+  * Add token to Variables tab in workflow
 ` : ''}
 
 User request: "${message}"
