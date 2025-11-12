@@ -60,6 +60,14 @@ export const sendTelegramInlineKeyboardBlock: BlockDefinition = {
     try {
       const { botToken, chatId, message, buttons, parseMode = 'HTML' } = inputs;
 
+      // Validate Telegram credentials
+      if (!botToken || typeof botToken !== 'string') {
+        throw new Error('botToken is required for Telegram inline keyboard');
+      }
+      if (!chatId) {
+        throw new Error('chatId is required for Telegram inline keyboard');
+      }
+
       let keyboard: any[][];
       
       if (typeof buttons === 'string') {
