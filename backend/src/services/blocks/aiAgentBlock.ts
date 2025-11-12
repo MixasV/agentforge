@@ -169,10 +169,12 @@ export const aiAgentBlock: BlockDefinition = {
         logger.warn('No tools enabled for AI Agent');
       }
 
-      // Get API key
+      // Get API keys
       const GROQ_API_KEY = process.env.GROQ_API;
-      if (!GROQ_API_KEY) {
-        throw new Error('GROQ_API not configured in environment variables');
+      const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+      
+      if (!GROQ_API_KEY && !OPENROUTER_API_KEY) {
+        throw new Error('Neither GROQ_API nor OPENROUTER_API_KEY configured. Need at least one!');
       }
 
       // Map user-friendly names to Groq production models (with fallback cascade)
@@ -222,24 +224,57 @@ export const aiAgentBlock: BlockDefinition = {
         let response;
         let lastError;
         
-        for (const modelToTry of modelCascade) {
-          try {
-            response = await callLLMWithTools(
-              modelToTry,
-              messages,
-              tools,
-              GROQ_API_KEY
-            );
-            break; // Success!
-          } catch (error: any) {
-            lastError = error;
-            logger.warn(`Model ${modelToTry} failed, trying next`, { error: error.message });
-            continue;
+        // Try Groq models first
+        if (GROQ_API_KEY) {
+          for (const modelToTry of modelCascade) {
+            try {
+              response = await callLLMWithTools(
+                modelToTry,
+                messages,
+                tools,
+                GROQ_API_KEY,
+                'groq'
+              );
+              break; // Success!
+            } catch (error: any) {
+              lastError = error;
+              logger.warn(`Groq model ${modelToTry} failed, trying next`, { error: error.message });
+              continue;
+            }
+          }
+        }
+        
+        // If all Groq models failed, try OpenRouter as final fallback
+        if (!response && OPENROUTER_API_KEY) {
+          logger.info('All Groq models failed, falling back to OpenRouter');
+          
+          const openRouterModels = [
+            'openai/gpt-4o-mini',
+            'anthropic/claude-3.5-haiku',
+            'meta-llama/llama-3.1-8b-instruct',
+          ];
+          
+          for (const openRouterModel of openRouterModels) {
+            try {
+              response = await callLLMWithTools(
+                openRouterModel,
+                messages,
+                tools,
+                OPENROUTER_API_KEY,
+                'openrouter'
+              );
+              logger.info('OpenRouter fallback successful', { model: openRouterModel });
+              break;
+            } catch (error: any) {
+              lastError = error;
+              logger.warn(`OpenRouter model ${openRouterModel} failed`, { error: error.message });
+              continue;
+            }
           }
         }
         
         if (!response) {
-          throw new Error(`All models in cascade failed: ${lastError?.message}`);
+          throw new Error(`All models failed (Groq + OpenRouter): ${lastError?.message}`);
         }
 
         // Add assistant message to history
@@ -595,7 +630,8 @@ async function callLLMWithTools(
   model: string,
   messages: AgentMessage[],
   tools: AITool[],
-  apiKey: string
+  apiKey: string,
+  provider: 'groq' | 'openrouter' = 'groq'
 ): Promise<{ message: AgentMessage }> {
   
   // Prepare tools in OpenAI format
@@ -626,10 +662,26 @@ async function callLLMWithTools(
   }
 
   logger.debug('Calling LLM', { 
+    provider,
     model, 
     toolsCount: toolsSpec.length,
     messagesCount: messages.length 
   });
+
+  const apiUrl = provider === 'openrouter' 
+    ? 'https://openrouter.ai/api/v1/chat/completions'
+    : 'https://api.groq.com/openai/v1/chat/completions';
+    
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  
+  // OpenRouter specific headers
+  if (provider === 'openrouter') {
+    headers['HTTP-Referer'] = 'https://agentforge.ai';
+    headers['X-Title'] = 'AgentForge';
+  }
 
   let response;
   let lastError;
@@ -637,17 +689,10 @@ async function callLLMWithTools(
   // Retry logic for rate limits (429)
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      response = await axios.post(
-        'https://api.groq.com/openai/v1/chat/completions',
-        payload,
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 60000,
-        }
-      );
+      response = await axios.post(apiUrl, payload, {
+        headers,
+        timeout: 60000,
+      });
       break; // Success!
     } catch (error: any) {
       lastError = error;
