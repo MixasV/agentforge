@@ -78,20 +78,46 @@ export const sendTelegramInlineKeyboardBlock: BlockDefinition = {
         throw new Error('Buttons must be an array of arrays');
       }
 
-      // Validate button format
-      for (const row of keyboard) {
+      // Auto-fix common LLM mistakes
+      const fixedKeyboard: any[][] = [];
+      
+      for (let i = 0; i < keyboard.length; i++) {
+        const row = keyboard[i];
+        
         if (!Array.isArray(row)) {
           throw new Error('Each button row must be an array. Got: ' + JSON.stringify(row));
         }
-        for (const button of row) {
+        
+        const fixedRow: any[] = [];
+        
+        for (let j = 0; j < row.length; j++) {
+          const button = row[j];
+          
+          // Auto-fix: Convert string to button object
           if (typeof button === 'string') {
-            throw new Error('Invalid button format. Expected {text:"...",callback_data:"..."}, got string: "' + button + '"');
+            logger.warn('Auto-fixing button format', { 
+              original: button, 
+              fixed: { text: button, callback_data: button.toLowerCase().replace(/\s+/g, '_') }
+            });
+            fixedRow.push({
+              text: button,
+              callback_data: button.toLowerCase().replace(/\s+/g, '_')
+            });
+            continue;
           }
+          
+          // Validate proper button object
           if (!button.text || !button.callback_data) {
             throw new Error('Button must have "text" and "callback_data" fields. Got: ' + JSON.stringify(button));
           }
+          
+          fixedRow.push(button);
         }
+        
+        fixedKeyboard.push(fixedRow);
       }
+      
+      keyboard = fixedKeyboard;
 
       logger.info('Sending Telegram message with inline keyboard', {
         chatId,
