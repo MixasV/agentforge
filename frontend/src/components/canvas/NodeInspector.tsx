@@ -20,7 +20,10 @@ export function NodeInspector() {
   });
 
   const blocks: (BlockDefinition & { type: string })[] = blocksData?.data?.blocks || [];
-  const currentBlockDef = blocks.find(b => b.type === selectedNode?.data?.type);
+  const currentBlockDef = blocks.find(b => 
+    b.type === selectedNode?.data?.type || 
+    b.name === selectedNode?.data?.label
+  );
 
   useEffect(() => {
     if (selectedNode?.data?.config) {
