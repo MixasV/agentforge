@@ -241,6 +241,94 @@ Extracted entities from user message:
        - Rate limit/API errors → suggest retry later
        - ALWAYS send error explanation via send_telegram (never leave user hanging)"
    
+   J. HYBRID TRADING WORKFLOWS ⚡ (CRITICAL FOR SPEED!)
+      
+      🔴 PROBLEM: AI Agent too slow for trading!
+      - 5-15 seconds per trade (multiple LLM calls)
+      - Rate limits cause failures
+      - Users want instant trades (<3s)
+      
+      ✅ SOLUTION: Hybrid Architecture - Split TRADE vs ANALYSIS
+      
+      **Two Separate Paths:**
+      
+      1️⃣ **TRADE PATH** (LINEAR, NO AI AGENT!):
+         ```
+         Trigger → Extract Params → Quote → Buttons → Authorize → Execute → Result
+         ```
+         ⏱️ Speed: 2-3 seconds
+         🚫 No LLM, no rate limits, no delays!
+         ✅ Fast, reliable, predictable
+         
+      2️⃣ **AI PATH** (for analysis only):
+         ```
+         Trigger → AI Agent → [Tools: jupiter_token_info, send_telegram]
+         ```
+         ⏱️ Speed: 5-10 seconds (OK for analysis)
+         ✅ Flexible, intelligent responses
+      
+      **Intent Classification** (router logic):
+      - Message contains "buy/sell/swap" + amount → TRADE PATH
+      - Message is token address only → AI PATH (analysis)
+      - Message contains "analyze/info/help" → AI PATH
+      - Default → AI PATH
+      
+      **Extract Trade Params Block** (regex, instant):
+      - "Buy 0.1 SOL of BONK" → {action: "buy", amount: 0.1, from: "SOL", to: "BONK"}
+      - "Sell 1000 BONK for SOL" → {action: "sell", amount: 1000, token: "BONK", to: "SOL"}
+      - "Swap 5 USDC to SOL" → {action: "swap", amount: 5, from: "USDC", to: "SOL"}
+      
+      **When user requests "Create Solana trading bot":**
+      
+      Generate workflow with:
+      1. telegram_trigger
+      2. intent_classifier (pattern matching)
+      3. router (splits based on intent)
+      4. TRADE branch: extract_params → quote → buttons → auth → execute (NO AI!)
+      5. AI branch: ai_agent with tools (for analysis only)
+      
+      **Example workflow JSON:**
+      ```json
+      {
+        "nodes": [
+          {"id": "trigger", "type": "telegram_trigger"},
+          {"id": "classifier", "type": "intent_classifier"},
+          {"id": "router", "type": "router"},
+          
+          // TRADE PATH (fast!)
+          {"id": "extract", "type": "extract_trade_params"},
+          {"id": "quote", "type": "jupiter_swap_quote"},
+          {"id": "confirm", "type": "send_telegram_inline_keyboard"},
+          {"id": "auth", "type": "authorize_session_key"},
+          {"id": "execute", "type": "execute_trade_with_session_key"},
+          {"id": "result_trade", "type": "send_telegram"},
+          
+          // AI PATH (analysis)
+          {"id": "ai", "type": "ai_agent"},
+          {"id": "token_info", "type": "jupiter_token_info"},
+          {"id": "send", "type": "send_telegram"}
+        ],
+        "edges": [
+          {"source": "trigger", "target": "classifier"},
+          {"source": "classifier", "target": "router"},
+          {"source": "router", "target": "extract", "condition": "intent==TRADE"},
+          {"source": "router", "target": "ai", "condition": "intent==AI"},
+          {"source": "extract", "target": "quote"},
+          // ... rest of trade path
+          {"source": "token_info", "target": "ai", "targetHandle": "tool"}
+        ]
+      }
+      ```
+      
+      🎯 **Benefits:**
+      - Trades execute in 2-3s (10x faster!)
+      - No rate limit issues on critical path
+      - Reliable, predictable trading
+      - AI still available for analysis when time allows
+      
+      ⚠️ **IMPORTANT:** When building trading bots, ALWAYS use hybrid approach!
+      Don't put AI Agent in trading flow - it's too slow!
+   
    AI Agent system message should guide ANALYSIS:
    
    Example system message for token analysis bot:
