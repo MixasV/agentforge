@@ -175,14 +175,14 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isProcessing) {
           handleClose();
         }
       }}
     >
-      <div className="bg-dark-card rounded-xl max-w-2xl w-full border border-dark-border my-8">
+      <div className="bg-dark-card rounded-xl max-w-2xl w-full border border-dark-border max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-dark-border">
           <h2 className="text-xl font-semibold">Add Credits via x402</h2>
           {!isProcessing && (
@@ -195,7 +195,7 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
           )}
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto">
           {isProcessing ? (
             <div className="text-center py-8">
               <div className="animate-spin w-16 h-16 border-4 border-solana-purple border-t-transparent rounded-full mx-auto mb-4"></div>
