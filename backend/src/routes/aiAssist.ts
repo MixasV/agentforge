@@ -152,10 +152,10 @@ Extracted entities from user message:
 1. **INTERACTIVE BOTS**: AI Agent with Visual Tool Connections (like n8n sub-nodes)
    
    ❌ WRONG - Linear flow (tools execute automatically):
-   [Telegram] -> [AI Agent] -> [Jupiter Token Info] -> [Send Telegram]
+   [Telegram] → [AI Agent] → [Jupiter Token Info] → [Send Telegram]
    
    ✅ RIGHT - Tools as sub-nodes (AI Agent calls them internally):
-   [Telegram Trigger] ──-> [AI Agent]
+   [Telegram Trigger] ──→ [AI Agent]
                                ↑ tool edge
                           [Jupiter Token Info]
                                ↑ tool edge
@@ -176,7 +176,7 @@ Extracted entities from user message:
    
    B. WHAT HAPPENS:
       - Topological sort EXCLUDES tool edges (targetHandle='tool')
-      - Main flow: Telegram Trigger -> AI Agent (that's it!)
+      - Main flow: Telegram Trigger → AI Agent (that's it!)
       - Tool nodes (Jupiter, Send Telegram) are NOT executed automatically
       - AI Agent discovers tools via edges and calls them ONLY when needed
    
@@ -191,11 +191,11 @@ Extracted entities from user message:
       - Just place them on canvas with tool edge to AI Agent
    
    E. TOOL SELECTION GUIDE:
-      - Simple text messages -> send_telegram
-      - Questions with buttons -> send_telegram_inline_keyboard + handle_callback_query
-      - User confirmation needed -> ALWAYS use inline keyboard (buttons)
-      - Trading/buying -> authorize_session_key + execute_trade_with_session_key
-      - Token info -> jupiter_token_info (NOT old blocks)
+      - Simple text messages → send_telegram
+      - Questions with buttons → send_telegram_inline_keyboard + handle_callback_query
+      - User confirmation needed → ALWAYS use inline keyboard (buttons)
+      - Trading/buying → authorize_session_key + execute_trade_with_session_key
+      - Token info → jupiter_token_info (NOT old blocks)
    
    F. WHY THIS WORKS (like n8n):
       - Tool edges excluded from main execution flow
@@ -235,99 +235,11 @@ Extracted entities from user message:
       System message should include error recovery:
       
       "If tool returns error:
-       - address validation errors -> ask user to verify address format
-       - 'No active session' -> means need to call authorize_session_key first
-       - 'Token not found' -> ask user to check symbol/address
-       - Rate limit/API errors -> suggest retry later
+       - address validation errors → ask user to verify address format
+       - 'No active session' → means need to call authorize_session_key first
+       - 'Token not found' → ask user to check symbol/address
+       - Rate limit/API errors → suggest retry later
        - ALWAYS send error explanation via send_telegram (never leave user hanging)"
-   
-   J. HYBRID TRADING WORKFLOWS ⚡ (CRITICAL FOR SPEED!)
-      
-      🔴 PROBLEM: AI Agent too slow for trading!
-      - 5-15 seconds per trade (multiple LLM calls)
-      - Rate limits cause failures
-      - Users want instant trades (<3s)
-      
-      ✅ SOLUTION: Hybrid Architecture - Split TRADE vs ANALYSIS
-      
-      **Two Separate Paths:**
-      
-      1️⃣ **TRADE PATH** (LINEAR, NO AI AGENT!):
-         ```
-         Trigger -> Extract Params -> Quote -> Buttons -> Authorize -> Execute -> Result
-         ```
-         ⏱️ Speed: 2-3 seconds
-         🚫 No LLM, no rate limits, no delays!
-         ✅ Fast, reliable, predictable
-         
-      2️⃣ **AI PATH** (for analysis only):
-         ```
-         Trigger -> AI Agent -> [Tools: jupiter_token_info, send_telegram]
-         ```
-         ⏱️ Speed: 5-10 seconds (OK for analysis)
-         ✅ Flexible, intelligent responses
-      
-      **Intent Classification** (router logic):
-      - Message contains "buy/sell/swap" + amount -> TRADE PATH
-      - Message is token address only -> AI PATH (analysis)
-      - Message contains "analyze/info/help" -> AI PATH
-      - Default -> AI PATH
-      
-      **Extract Trade Params Block** (regex, instant):
-      - "Buy 0.1 SOL of BONK" -> {action: "buy", amount: 0.1, from: "SOL", to: "BONK"}
-      - "Sell 1000 BONK for SOL" -> {action: "sell", amount: 1000, token: "BONK", to: "SOL"}
-      - "Swap 5 USDC to SOL" -> {action: "swap", amount: 5, from: "USDC", to: "SOL"}
-      
-      **When user requests "Create Solana trading bot":**
-      
-      Generate workflow with:
-      1. telegram_trigger
-      2. intent_classifier (pattern matching)
-      3. router (splits based on intent)
-      4. TRADE branch: extract_params -> quote -> buttons -> auth -> execute (NO AI!)
-      5. AI branch: ai_agent with tools (for analysis only)
-      
-      **Example workflow JSON:**
-      ```json
-      {
-        "nodes": [
-          {"id": "trigger", "type": "telegram_trigger"},
-          {"id": "classifier", "type": "intent_classifier"},
-          {"id": "router", "type": "router"},
-          
-          // TRADE PATH (fast!)
-          {"id": "extract", "type": "extract_trade_params"},
-          {"id": "quote", "type": "jupiter_swap_quote"},
-          {"id": "confirm", "type": "send_telegram_inline_keyboard"},
-          {"id": "auth", "type": "authorize_session_key"},
-          {"id": "execute", "type": "execute_trade_with_session_key"},
-          {"id": "result_trade", "type": "send_telegram"},
-          
-          // AI PATH (analysis)
-          {"id": "ai", "type": "ai_agent"},
-          {"id": "token_info", "type": "jupiter_token_info"},
-          {"id": "send", "type": "send_telegram"}
-        ],
-        "edges": [
-          {"source": "trigger", "target": "classifier"},
-          {"source": "classifier", "target": "router"},
-          {"source": "router", "target": "extract", "condition": "intent==TRADE"},
-          {"source": "router", "target": "ai", "condition": "intent==AI"},
-          {"source": "extract", "target": "quote"},
-          // ... rest of trade path
-          {"source": "token_info", "target": "ai", "targetHandle": "tool"}
-        ]
-      }
-      ```
-      
-      🎯 **Benefits:**
-      - Trades execute in 2-3s (10x faster!)
-      - No rate limit issues on critical path
-      - Reliable, predictable trading
-      - AI still available for analysis when time allows
-      
-      ⚠️ **IMPORTANT:** When building trading bots, ALWAYS use hybrid approach!
-      Don't put AI Agent in trading flow - it's too slow!
    
    AI Agent system message should guide ANALYSIS:
    
@@ -337,10 +249,10 @@ Extracted entities from user message:
 **WORKFLOW RULES:**
 
 1. **ALWAYS RESPOND TO USER** - Never leave user without response!
-   - Success -> Send formatted analysis via send_telegram
-   - Error -> Send helpful error message via send_telegram
-   - Invalid input -> Ask for clarification via send_telegram
-   - Tool failure -> Explain what went wrong via send_telegram
+   - Success → Send formatted analysis via send_telegram
+   - Error → Send helpful error message via send_telegram
+   - Invalid input → Ask for clarification via send_telegram
+   - Tool failure → Explain what went wrong via send_telegram
 
 2. **TOKEN ANALYSIS FLOW:**
    When user provides token address or symbol:
@@ -388,13 +300,13 @@ Extracted entities from user message:
    H. RESPONSE HANDLING RULES:
       ⚠️ CRITICAL: AI Agent responses must be sent back to user!
       
-      - If AI Agent has send_telegram as tool -> IT MUST CALL IT for every response
-      - If AI Agent gets error from tool -> IT MUST SEND ERROR MESSAGE via send_telegram
-      - If user asks invalid question -> AI AGENT MUST REPLY via send_telegram
+      - If AI Agent has send_telegram as tool → IT MUST CALL IT for every response
+      - If AI Agent gets error from tool → IT MUST SEND ERROR MESSAGE via send_telegram
+      - If user asks invalid question → AI AGENT MUST REPLY via send_telegram
       - System has auto-send fallback BUT agent should call send_telegram explicitly
       
-      BAD FLOW: User message -> AI Agent analyzes -> Returns response (user sees nothing)
-      GOOD FLOW: User message -> AI Agent analyzes -> Calls send_telegram -> User gets message
+      BAD FLOW: User message → AI Agent analyzes → Returns response (user sees nothing)
+      GOOD FLOW: User message → AI Agent analyzes → Calls send_telegram → User gets message
    
    I. ERROR HANDLING PATTERNS FOR AI AGENT:
       🛡️ Make AI Agent system message robust with error handling!
@@ -402,25 +314,25 @@ Extracted entities from user message:
       **Common errors and how to handle:**
       
       1. **Tool returns error object**: {"error": "No token found"}
-         -> Agent must parse error message and send helpful response
-         -> Example: Check address length, suggest corrections
+         → Agent must parse error message and send helpful response
+         → Example: Check address length, suggest corrections
       
       2. **Empty/Invalid user input**:
-         -> Don't call tools with empty data
-         -> Send guidance message: "Please provide [what you need]"
+         → Don't call tools with empty data
+         → Send guidance message: "Please provide [what you need]"
       
       3. **API/Network failures**:
-         -> Explain service is temporarily unavailable
-         -> Suggest trying again later
+         → Explain service is temporarily unavailable
+         → Suggest trying again later
       
       4. **Session Key not authorized** (for trading):
-         -> Detect error from authorize_session_key
-         -> Send authorization URL to user
-         -> Explain: "Click link to authorize trading (secure session key)"
+         → Detect error from authorize_session_key
+         → Send authorization URL to user
+         → Explain: "Click link to authorize trading (secure session key)"
       
       5. **Insufficient funds/limits**:
-         -> Parse error from execute_trade_with_session_key
-         -> Explain clearly: amount exceeds limit / insufficient balance
+         → Parse error from execute_trade_with_session_key
+         → Explain clearly: amount exceeds limit / insufficient balance
       
       **Template for robust system message:**
       "You are [bot purpose].
