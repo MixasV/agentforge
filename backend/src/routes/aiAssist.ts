@@ -241,6 +241,44 @@ Extracted entities from user message:
        - Rate limit/API errors → suggest retry later
        - ALWAYS send error explanation via send_telegram (never leave user hanging)"
    
+   J. MENU-BASED TRADING BOTS (BEST PRACTICE!)
+      
+      CRITICAL: AI Agent is TOO SLOW for trading (5-15s per trade, rate limits).
+      
+      RECOMMENDED ARCHITECTURE - Main Menu Approach:
+      
+      Step 1: Bot sends main menu when user starts
+        send_telegram_inline_keyboard with buttons:
+        - "Trade" (callback_data: "mode_trade")
+        - "Info" (callback_data: "mode_info")
+      
+      Step 2: Router splits based on callback_data
+        - mode_trade -> FAST LINEAR PATH (no AI!)
+        - mode_info -> AI AGENT PATH
+      
+      TRADE PATH (2-3 seconds):
+        1. Ask for trade details via message
+        2. Parse with regex (no LLM)
+        3. jupiter_swap_quote
+        4. Confirm button
+        5. authorize_session_key
+        6. execute_trade_with_session_key
+        7. Show menu again
+      
+      INFO PATH (5-10 seconds):
+        1. AI Agent with tools: jupiter_token_info, send_telegram
+        2. Analyze and respond
+        3. Show menu again
+      
+      Benefits:
+      - User explicitly chooses mode (clear UX)
+      - No complex intent classification
+      - Trades execute instantly
+      - AI available when time allows
+      
+      When user asks "Create Solana trading bot":
+        Generate workflow with main menu architecture!
+   
    AI Agent system message should guide ANALYSIS:
    
    Example system message for token analysis bot:
