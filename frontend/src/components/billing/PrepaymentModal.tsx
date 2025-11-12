@@ -183,19 +183,20 @@ export function PrepaymentModal({ isOpen, onClose, onSuccess }: PrepaymentModalP
       }}
     >
       <div className="bg-dark-card rounded-xl max-w-2xl w-full border border-dark-border max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-dark-border">
+        <div className="flex items-center justify-between p-6 border-b border-dark-border flex-shrink-0">
           <h2 className="text-xl font-semibold">Add Credits via x402</h2>
           {!isProcessing && (
             <button
               onClick={handleClose}
               className="p-2 hover:bg-dark-bg rounded-lg transition-colors"
+              aria-label="Close"
             >
               <X size={20} />
             </button>
           )}
         </div>
 
-        <div className="p-6 overflow-y-auto">
+        <div className="p-6 overflow-y-auto flex-1">
           {isProcessing ? (
             <div className="text-center py-8">
               <div className="animate-spin w-16 h-16 border-4 border-solana-purple border-t-transparent rounded-full mx-auto mb-4"></div>
