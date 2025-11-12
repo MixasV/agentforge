@@ -631,20 +631,42 @@ async function callLLMWithTools(
     messagesCount: messages.length 
   });
 
-  const response = await axios.post(
-    'https://api.groq.com/openai/v1/chat/completions',
-    payload,
-    {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 60000,
+  let response;
+  let lastError;
+  
+  // Retry logic for rate limits (429)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 60000,
+        }
+      );
+      break; // Success!
+    } catch (error: any) {
+      lastError = error;
+      
+      // Only retry on 429 (rate limit)
+      if (error.response?.status === 429 && attempt < 2) {
+        const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
+        logger.warn(`Rate limited (429), retrying in ${delay}ms`, { model, attempt: attempt + 1 });
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // Don't retry other errors
+      throw error;
     }
-  );
+  }
 
-  if (!response.data || !response.data.choices || !response.data.choices[0]) {
-    throw new Error('Invalid LLM response');
+  if (!response || !response.data || !response.data.choices || !response.data.choices[0]) {
+    throw lastError || new Error('Invalid LLM response');
   }
 
   const choice = response.data.choices[0];
