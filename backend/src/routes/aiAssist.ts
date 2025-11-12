@@ -417,16 +417,23 @@ Explain to user:
 
 User request: "${message}"
 
+CRITICAL: In nodes[].data.type, use EXACT block type names, NOT categories!
+Examples:
+- "type": "telegram_trigger" (NOT "trigger")
+- "type": "ai_agent" (NOT "ai")  
+- "type": "jupiter_token_info" (NOT "data")
+- "type": "send_telegram" (NOT "action")
+
 Generate workflow JSON:
 {
   "message": "Natural language explanation",
   "nodes": [
     {
       "id": "unique-id",
-      "type": "block_type",
+      "type": "customNode",
       "position": {"x": number, "y": number},
       "data": {
-        "type": "block_type",
+        "type": "EXACT_BLOCK_TYPE_FROM_LIST_ABOVE",
         "label": "Block Name",
         "category": "trigger|action|ai|logic|data",
         "config": {
