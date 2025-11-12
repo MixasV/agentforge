@@ -78,6 +78,21 @@ export const sendTelegramInlineKeyboardBlock: BlockDefinition = {
         throw new Error('Buttons must be an array of arrays');
       }
 
+      // Validate button format
+      for (const row of keyboard) {
+        if (!Array.isArray(row)) {
+          throw new Error('Each button row must be an array. Got: ' + JSON.stringify(row));
+        }
+        for (const button of row) {
+          if (typeof button === 'string') {
+            throw new Error('Invalid button format. Expected {text:"...",callback_data:"..."}, got string: "' + button + '"');
+          }
+          if (!button.text || !button.callback_data) {
+            throw new Error('Button must have "text" and "callback_data" fields. Got: ' + JSON.stringify(button));
+          }
+        }
+      }
+
       logger.info('Sending Telegram message with inline keyboard', {
         chatId,
         messageLength: String(message).length,
