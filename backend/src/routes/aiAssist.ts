@@ -404,6 +404,7 @@ Generate workflow JSON:
             ],
             temperature: 0.7,
             max_tokens: 4000,
+            cache_prompt: true, // Enable Groq prompt caching (90% token reduction for system prompt)
           },
           {
             headers: {

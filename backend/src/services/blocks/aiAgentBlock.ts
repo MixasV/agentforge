@@ -661,6 +661,11 @@ async function callLLMWithTools(
     payload.tool_choice = 'auto';
   }
 
+  // Enable prompt caching for Groq (reduces token usage by ~90% for system prompts)
+  if (provider === 'groq') {
+    payload.cache_prompt = true;
+  }
+
   logger.debug('Calling LLM', { 
     provider,
     model, 
