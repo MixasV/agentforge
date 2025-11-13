@@ -249,9 +249,9 @@ export const aiAgentBlock: BlockDefinition = {
           logger.info('All Groq models failed, falling back to OpenRouter');
           
           const openRouterModels = [
-            'openai/gpt-4o-mini',
-            'anthropic/claude-3.5-haiku',
-            'meta-llama/llama-3.1-8b-instruct',
+            'meta-llama/llama-3.1-8b-instruct:free',  // FREE ✅
+            'google/gemini-flash-1.5-8b:free',        // FREE ✅
+            'mistralai/mistral-7b-instruct:free',     // FREE ✅
           ];
           
           for (const openRouterModel of openRouterModels) {
